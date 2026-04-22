@@ -6,6 +6,7 @@ import { Home, Calendar, CheckCircle, Wallet, User } from 'lucide-react-native';
 
 // Import Screens
 import { SplashScreen } from '../screens/SplashScreen';
+import { IntentSelectionScreen } from '../screens/IntentSelectionScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { OTPScreen } from '../screens/OTPScreen';
 import { BackgroundCheckScreen } from '../screens/BackgroundCheckScreen';
@@ -86,6 +87,7 @@ export const AppNavigator = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Splash" component={SplashScreen} />
+      <Stack.Screen name="IntentSelection" component={IntentSelectionScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="OTP" component={OTPScreen} />
       <Stack.Screen name="BackgroundCheck" component={BackgroundCheckScreen} />

@@ -13,7 +13,7 @@ export const SplashScreen = ({ navigation }: any) => {
     }).start();
 
     const timer = setTimeout(() => {
-      navigation.replace('Login');
+      navigation.replace('IntentSelection');
     }, 3000);
 
     return () => clearTimeout(timer);
