@@ -1,11 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { CommonActions } from '@react-navigation/native';
+import { GlobalHeader } from '../components/GlobalHeader';
 import { theme } from '../theme/theme';
 import { useStore } from '../store/useStore';
 import { Card } from '../components/Card';
 import { User, Shield, Car, FileText, Settings, LogOut, ChevronRight } from 'lucide-react-native';
 
-export const ProfileScreen = () => {
+export const ProfileScreen = ({ navigation }: any) => {
   const { user, logout } = useStore();
 
   const menuItems = [
@@ -15,8 +17,19 @@ export const ProfileScreen = () => {
     { icon: <Settings size={20} color={theme.colors.textSecondary} />, title: 'Settings' },
   ];
 
+  const handleLogout = () => {
+    logout();
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Splash' }],
+      })
+    );
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <GlobalHeader />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View style={styles.avatarContainer}>
@@ -55,7 +68,7 @@ export const ProfileScreen = () => {
             </TouchableOpacity>
           ))}
           
-          <TouchableOpacity style={[styles.menuItem, styles.logoutBtn]} onPress={logout}>
+          <TouchableOpacity style={[styles.menuItem, styles.logoutBtn]} onPress={handleLogout}>
             <View style={[styles.menuIcon, { backgroundColor: theme.colors.error + '10' }]}>
               <LogOut size={20} color={theme.colors.error} />
             </View>
@@ -65,7 +78,7 @@ export const ProfileScreen = () => {
 
         <Text style={styles.version}>ASAS Driver Hub v1.0.0</Text>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

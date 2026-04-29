@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { GlobalHeader } from '../components/GlobalHeader';
 import { theme } from '../theme/theme';
 import { Card } from '../components/Card';
 import { Calendar, Clock, MapPin, ChevronRight } from 'lucide-react-native';
@@ -64,7 +65,8 @@ export const UpcomingTripsScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <GlobalHeader />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Upcoming Trips</Text>
       </View>
@@ -80,7 +82,7 @@ export const UpcomingTripsScreen = () => {
           </View>
         }
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

@@ -1,12 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { GlobalHeader } from '../components/GlobalHeader';
 import { theme } from '../theme/theme';
 import { Card } from '../components/Card';
 import { TrendingUp, Calendar, ChevronRight, Wallet } from 'lucide-react-native';
 
 export const EarningsScreen = () => {
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <GlobalHeader />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Earnings</Text>
         <TouchableOpacity style={styles.walletBtn}>
@@ -52,7 +54,7 @@ export const EarningsScreen = () => {
           </TouchableOpacity>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

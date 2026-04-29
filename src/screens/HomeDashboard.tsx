@@ -1,15 +1,26 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform, UIManager, LayoutAnimation, Modal } from 'react-native';
 import MapView from '../components/MapView';
+import { GlobalHeader } from '../components/GlobalHeader';
 import { theme } from '../theme/theme';
 import { useStore } from '../store/useStore';
 import { Button } from '../components/Button';
-import { Bell, MapPin, Navigation, Clock, CreditCard } from 'lucide-react-native';
+import { Bell, MapPin, Navigation, Clock, CreditCard, ArrowLeft, Truck, AlertTriangle, Phone, MoonStar } from 'lucide-react-native';
+import { useTranslation } from '../hooks/useTranslation';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export const HomeDashboard = ({ navigation }: any) => {
   const { user, toggleOnline, activeTrip, trips, setActiveTrip } = useStore();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isSOSVisible, setIsSOSVisible] = useState(false);
+  const [isNightPillExpanded, setIsNightPillExpanded] = useState(false);
+  const [isSpeedPillExpanded, setIsSpeedPillExpanded] = useState(false);
+  const { t } = useTranslation();
 
   const handleTripAction = () => {
     if (!activeTrip) {
@@ -19,8 +30,16 @@ export const HomeDashboard = ({ navigation }: any) => {
     }
   };
 
+  const toggleExpand = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsExpanded(!isExpanded);
+  };
+
   return (
     <View style={styles.container}>
+      <View style={{ zIndex: 10, position: 'absolute', top: 0, left: 0, right: 0 }}>
+        <GlobalHeader />
+      </View>
       {/* Map Background */}
       <MapView
         style={styles.map}
@@ -32,49 +51,89 @@ export const HomeDashboard = ({ navigation }: any) => {
         }}
       />
 
-      {/* Top Bar */}
-      <SafeAreaView style={styles.topBarContainer}>
-        <View style={styles.topBar}>
-          <View style={styles.brandBadge}>
-            <Text style={styles.brandText}>ASAS</Text>
+      {/* SOS Button Overlay */}
+      <TouchableOpacity 
+        style={styles.sosButton} 
+        onPress={() => setIsSOSVisible(true)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.sosButtonText}>SOS</Text>
+      </TouchableOpacity>
+
+      {/* Night Hours Pill Overlay */}
+      <TouchableOpacity 
+        style={styles.nightPill} 
+        onPress={() => {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setIsNightPillExpanded(!isNightPillExpanded);
+        }}
+        activeOpacity={0.8}
+      >
+        {isNightPillExpanded && (
+          <View style={styles.nightPillTextContainer}>
+            <Text style={styles.nightHoursText}>{t('night_hours')} - 2.1 Hrs.</Text>
+            <Text style={styles.nightResetText}>{t('reset_next_month')}</Text>
           </View>
-
-          <TouchableOpacity style={styles.notificationBtn} onPress={() => navigation.navigate('Notifications')}>
-            <Bell color={theme.colors.text} size={24} />
-            <View style={styles.notificationDot} />
-          </TouchableOpacity>
+        )}
+        <View style={styles.nightIconContainer}>
+          <MoonStar size={24} color={theme.colors.primary} />
         </View>
-      </SafeAreaView>
+      </TouchableOpacity>
 
-      {/* Simple Floating Card (Replacing Bottom Sheet to bypass crashes) */}
-      <View style={styles.floatingCard}>
-        <View style={styles.handle} />
+      {/* Speed Violation Pill Overlay */}
+      <TouchableOpacity 
+        style={styles.speedPill} 
+        onPress={() => {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setIsSpeedPillExpanded(!isSpeedPillExpanded);
+        }}
+        activeOpacity={0.8}
+      >
+        {isSpeedPillExpanded && (
+          <View style={styles.nightPillTextContainer}>
+            <Text style={styles.nightHoursText}>{t('over_80_time')}</Text>
+            <Text style={styles.nightResetText}>{t('reset_next_month')}</Text>
+          </View>
+        )}
+        <View style={styles.speedIconContainer}>
+          <Text style={styles.speedIconText}>80+</Text>
+          <Text style={styles.speedIconSubText}>km/h</Text>
+        </View>
+      </TouchableOpacity>
+
+      {/* Simple Floating Card */}
+      <View style={[styles.floatingCard, isExpanded && styles.floatingCardExpanded]}>
+        <TouchableOpacity style={styles.handleContainer} onPress={toggleExpand} activeOpacity={0.8}>
+          <View style={styles.handle} />
+        </TouchableOpacity>
         <View style={styles.cardContent}>
           {!activeTrip ? (
             <View style={styles.noTripContent}>
-              <Text style={styles.sheetTitle}>Ready for a trip?</Text>
-              <Text style={styles.sheetSubtitle}>Stay online to receive requests</Text>
+              <Text style={styles.sheetTitle}>{t('ready_for_trip')}</Text>
+              <Text style={styles.sheetSubtitle}>{t('stay_online')}</Text>
               
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <Clock size={20} color={theme.colors.primary} />
-                  <Text style={styles.statValue}>4.2h</Text>
-                  <Text style={styles.statLabel}>Online</Text>
+              {isExpanded && (
+                <View style={styles.statsRow}>
+                  <View style={styles.statItem}>
+                    <Clock size={20} color={theme.colors.primary} />
+                    <Text style={styles.statValue}>4.2h</Text>
+                    <Text style={styles.statLabel}>{t('online')}</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Navigation size={20} color={theme.colors.primary} />
+                    <Text style={styles.statValue}>12</Text>
+                    <Text style={styles.statLabel}>{t('trips')}</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <CreditCard size={20} color={theme.colors.primary} />
+                    <Text style={styles.statValue}>KSh 3k</Text>
+                    <Text style={styles.statLabel}>{t('earned')}</Text>
+                  </View>
                 </View>
-                <View style={styles.statItem}>
-                  <Navigation size={20} color={theme.colors.primary} />
-                  <Text style={styles.statValue}>12</Text>
-                  <Text style={styles.statLabel}>Trips</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <CreditCard size={20} color={theme.colors.primary} />
-                  <Text style={styles.statValue}>KSh 3k</Text>
-                  <Text style={styles.statLabel}>Earned</Text>
-                </View>
-              </View>
+              )}
 
               <Button
-                title="Go to Active Area"
+                title={t('active_area')}
                 variant="outline"
                 onPress={() => {}}
                 style={styles.actionBtn}
@@ -92,20 +151,22 @@ export const HomeDashboard = ({ navigation }: any) => {
                 </View>
               </View>
 
-              <View style={styles.routeContainer}>
-                <View style={styles.routePoint}>
-                  <View style={[styles.pointDot, { backgroundColor: theme.colors.primary }]} />
-                  <Text style={styles.routeText} numberOfLines={1}>{activeTrip.pickup}</Text>
+              {isExpanded && (
+                <View style={styles.routeContainer}>
+                  <View style={styles.routePoint}>
+                    <View style={[styles.pointDot, { backgroundColor: theme.colors.primary }]} />
+                    <Text style={styles.routeText} numberOfLines={1}>{activeTrip.pickup}</Text>
+                  </View>
+                  <View style={styles.routeLine} />
+                  <View style={styles.routePoint}>
+                    <MapPin size={16} color={theme.colors.textSecondary} />
+                    <Text style={styles.routeText} numberOfLines={1}>{activeTrip.dropoff}</Text>
+                  </View>
                 </View>
-                <View style={styles.routeLine} />
-                <View style={styles.routePoint}>
-                  <MapPin size={16} color={theme.colors.textSecondary} />
-                  <Text style={styles.routeText} numberOfLines={1}>{activeTrip.dropoff}</Text>
-                </View>
-              </View>
+              )}
 
               <Button
-                title="View Trip Details"
+                title={t('view_trip')}
                 onPress={handleTripAction}
                 style={styles.actionBtn}
               />
@@ -113,6 +174,66 @@ export const HomeDashboard = ({ navigation }: any) => {
           )}
         </View>
       </View>
+
+      {/* SOS Screen Modal */}
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={isSOSVisible}
+        onRequestClose={() => setIsSOSVisible(false)}
+      >
+        <View style={styles.sosPageContainer}>
+          {/* Back Arrow Button */}
+          <TouchableOpacity 
+            style={styles.sosPageBackBtn} 
+            onPress={() => setIsSOSVisible(false)}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft size={28} color={theme.colors.text} />
+          </TouchableOpacity>
+
+          <View style={styles.sosPageContent}>
+            {/* Title */}
+            <Text style={styles.sosPageTitle}>{t('having_trouble')}</Text>
+
+            {/* Options */}
+            <View style={styles.sosPageOptions}>
+              <TouchableOpacity 
+                style={styles.sosPageOptionBtn} 
+                onPress={() => {}}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.sosOptionIconContainer, { backgroundColor: '#FFEBEE' }]}>
+                  <Truck size={24} color={theme.colors.primary} />
+                </View>
+                <Text style={styles.sosPageOptionText}>{t('issue_truck')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.sosPageOptionBtn} 
+                onPress={() => {}}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.sosOptionIconContainer, { backgroundColor: '#FFEBEE' }]}>
+                  <AlertTriangle size={24} color={theme.colors.primary} />
+                </View>
+                <Text style={styles.sosPageOptionText}>{t('report_accident')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.sosPageOptionBtn} 
+                onPress={() => {}}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.sosOptionIconContainer, { backgroundColor: '#FFEBEE' }]}>
+                  <Phone size={24} color={theme.colors.primary} />
+                </View>
+                <Text style={styles.sosPageOptionText}>{t('call_officer')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -195,14 +316,21 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
   },
+  floatingCardExpanded: {
+    paddingBottom: 60,
+    minHeight: SCREEN_HEIGHT * 0.6,
+  },
+  handleContainer: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    width: '100%',
+  },
   handle: {
     width: 40,
     height: 5,
     backgroundColor: theme.colors.border,
     borderRadius: 3,
-    alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: 20,
+    marginBottom: 10,
   },
   cardContent: {
     paddingHorizontal: theme.spacing.lg,
@@ -300,5 +428,160 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     width: '100%',
+    marginTop: theme.spacing.md,
+  },
+  sosButton: {
+    position: 'absolute',
+    top: 140,
+    right: 20,
+    backgroundColor: theme.colors.primary,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+    zIndex: 15,
+  },
+  sosButtonText: {
+    color: theme.colors.white,
+    ...theme.typography.labelLg,
+    fontWeight: 'bold',
+  },
+  sosPageContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  sosPageBackBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginBottom: theme.spacing.xl,
+  },
+  sosPageContent: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingBottom: 80,
+  },
+  sosPageTitle: {
+    ...theme.typography.h2,
+    color: theme.colors.text,
+    textAlign: 'center',
+    marginBottom: theme.spacing.xxl,
+  },
+  sosPageOptions: {
+    gap: theme.spacing.md,
+  },
+  sosPageOptionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.white,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    marginBottom: theme.spacing.sm,
+  },
+  sosOptionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing.md,
+  },
+  sosPageOptionText: {
+    ...theme.typography.bodyLg,
+    color: theme.colors.text,
+    fontWeight: '600',
+  },
+  nightPill: {
+    position: 'absolute',
+    top: 216,
+    right: 20,
+    backgroundColor: theme.colors.white,
+    height: 56,
+    borderRadius: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 8,
+    zIndex: 15,
+  },
+  nightPillTextContainer: {
+    marginRight: 12,
+    justifyContent: 'center',
+  },
+  nightHoursText: {
+    ...theme.typography.labelLg,
+    color: theme.colors.text,
+    fontWeight: '700',
+  },
+  nightResetText: {
+    color: theme.colors.textSecondary,
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  nightIconContainer: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  speedPill: {
+    position: 'absolute',
+    top: 292,
+    right: 20,
+    backgroundColor: theme.colors.white,
+    height: 56,
+    borderRadius: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 8,
+    zIndex: 15,
+  },
+  speedIconContainer: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  speedIconText: {
+    color: theme.colors.primary,
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  speedIconSubText: {
+    color: theme.colors.primary,
+    fontSize: 7,
+    fontWeight: '700',
+    marginTop: -2,
   },
 });

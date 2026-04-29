@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { GlobalHeader } from '../components/GlobalHeader';
 import { theme } from '../theme/theme';
 import { Card } from '../components/Card';
 import { CheckCircle, MapPin, ChevronRight, Calendar } from 'lucide-react-native';
@@ -67,7 +68,8 @@ export const CompletedTripsScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <GlobalHeader />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Completed Trips</Text>
       </View>
@@ -77,7 +79,7 @@ export const CompletedTripsScreen = () => {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

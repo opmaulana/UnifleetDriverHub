@@ -24,6 +24,7 @@ interface AppState {
   activeTrip: Trip | null;
   trips: Trip[];
   notifications: any[];
+  language: 'en' | 'sw' | 'ar' | 'hi' | 'fr';
   
   // Actions
   login: (phone: string) => void;
@@ -33,6 +34,7 @@ interface AppState {
   setActiveTrip: (trip: Trip | null) => void;
   updateTripStatus: (status: Trip['status']) => void;
   addNotification: (notification: any) => void;
+  setLanguage: (lang: 'en' | 'sw' | 'ar' | 'hi' | 'fr') => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -51,6 +53,7 @@ export const useStore = create<AppState>((set) => ({
     }
   ],
   notifications: [],
+  language: 'en',
 
   login: (phone) => set({ isAuthenticated: true, user: { name: 'Driver John', phone, vehicle: 'KDJ 432L', isOnline: true } }),
   logout: () => set({ isAuthenticated: false, user: null, activeTrip: null }),
@@ -65,4 +68,5 @@ export const useStore = create<AppState>((set) => ({
   addNotification: (notification) => set((state) => ({ 
     notifications: [notification, ...state.notifications] 
   })),
+  setLanguage: (lang) => set({ language: lang }),
 }));
