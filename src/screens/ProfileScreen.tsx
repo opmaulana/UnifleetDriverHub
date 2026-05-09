@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import { GlobalHeader } from '../components/GlobalHeader';
 import { theme } from '../theme/theme';
@@ -9,6 +9,9 @@ import { User, Shield, Car, FileText, Settings, LogOut, ChevronRight } from 'luc
 
 export const ProfileScreen = ({ navigation }: any) => {
   const { user, logout } = useStore();
+  const [loggingOut, setLoggingOut] = useState(false);
+  const splashOpacity = useRef(new Animated.Value(0)).current;
+  const splashScale = useRef(new Animated.Value(0.8)).current;
 
   const menuItems = [
     { icon: <Shield size={20} color={theme.colors.textSecondary} />, title: 'Personal Info' },
@@ -18,13 +21,30 @@ export const ProfileScreen = ({ navigation }: any) => {
   ];
 
   const handleLogout = () => {
-    logout();
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'Splash' }],
-      })
-    );
+    setLoggingOut(true);
+    Animated.parallel([
+      Animated.timing(splashOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(splashScale, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setTimeout(() => {
+        logout();
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'IntentSelection' }],
+          })
+        );
+      }, 1200);
+    });
   };
 
   return (
@@ -78,6 +98,16 @@ export const ProfileScreen = ({ navigation }: any) => {
 
         <Text style={styles.version}>ASAS Driver Hub v1.0.0</Text>
       </ScrollView>
+
+      {/* Logout Splash Overlay */}
+      {loggingOut && (
+        <Animated.View style={[styles.splashOverlay, { opacity: splashOpacity }]}>
+          <Animated.View style={[styles.splashContent, { transform: [{ scale: splashScale }] }]}>
+            <Text style={styles.splashBrand}>ASAS</Text>
+            <Text style={styles.splashSub}>Drivers Hub</Text>
+          </Animated.View>
+        </Animated.View>
+      )}
     </View>
   );
 };
@@ -194,5 +224,30 @@ const styles = StyleSheet.create({
     ...theme.typography.labelSm,
     color: theme.colors.textSecondary,
     marginTop: theme.spacing.xxl,
-  }
+  },
+
+  // ---- Splash Overlay ----
+  splashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  splashContent: {
+    alignItems: 'center',
+  },
+  splashBrand: {
+    fontSize: 64,
+    fontWeight: '900',
+    color: theme.colors.primary,
+    letterSpacing: -2,
+  },
+  splashSub: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginTop: 8,
+    letterSpacing: 4,
+    textTransform: 'uppercase',
+  },
 });

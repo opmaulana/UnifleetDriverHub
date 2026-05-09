@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Trip {
   id: string;
@@ -11,10 +13,14 @@ interface Trip {
 }
 
 interface User {
+  driver_id: string;
   name: string;
   phone: string;
   vehicle: string;
   photo?: string;
+  role: 'driver';
+  onboarding_completed: boolean;
+  permissions_granted: boolean;
   isOnline: boolean;
 }
 
@@ -37,10 +43,12 @@ interface AppState {
   setLanguage: (lang: 'en' | 'sw' | 'ar' | 'hi' | 'fr') => void;
 }
 
-export const useStore = create<AppState>((set) => ({
-  isAuthenticated: false,
-  user: null,
-  activeTrip: null,
+export const useStore = create<AppState>()(
+  persist(
+    (set) => ({
+      isAuthenticated: false,
+      user: null,
+      activeTrip: null,
   trips: [
     {
       id: '1',
@@ -55,7 +63,19 @@ export const useStore = create<AppState>((set) => ({
   notifications: [],
   language: 'en',
 
-  login: (phone) => set({ isAuthenticated: true, user: { name: 'Driver John', phone, vehicle: 'KDJ 432L', isOnline: true } }),
+  login: (phone) => set({ 
+    isAuthenticated: true, 
+    user: { 
+      driver_id: 'mock-driver-123',
+      name: 'Driver John', 
+      phone, 
+      vehicle: 'KDJ 432L',
+      role: 'driver',
+      onboarding_completed: true,
+      permissions_granted: true,
+      isOnline: true 
+    } 
+  }),
   logout: () => set({ isAuthenticated: false, user: null, activeTrip: null }),
   setUser: (user) => set({ user }),
   toggleOnline: () => set((state) => ({ 
@@ -68,5 +88,16 @@ export const useStore = create<AppState>((set) => ({
   addNotification: (notification) => set((state) => ({ 
     notifications: [notification, ...state.notifications] 
   })),
-  setLanguage: (lang) => set({ language: lang }),
-}));
+      setLanguage: (lang) => set({ language: lang }),
+    }),
+    {
+      name: 'asas-driver-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({ 
+        isAuthenticated: state.isAuthenticated, 
+        user: state.user, 
+        language: state.language 
+      }), // Only persist these fields
+    }
+  )
+);

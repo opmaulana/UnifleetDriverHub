@@ -21,8 +21,8 @@ export const ProfileSetupScreen = ({ navigation }: any) => {
   const [vehicle, setVehicle] = useState('');
 
   const handleComplete = () => {
-    login('0700000000');
-    navigation.replace('Main');
+    // Navigate to mandatory permissions screen
+    navigation.navigate('BackgroundCheck', { name, vehicle });
   };
 
   return (
@@ -58,29 +58,8 @@ export const ProfileSetupScreen = ({ navigation }: any) => {
           />
         </View>
 
-        <Text style={styles.sectionTitle}>Documents</Text>
-        <Card style={styles.documentCard}>
-          <View style={styles.documentInfo}>
-            <Text style={styles.documentName}>Driving License</Text>
-            <Text style={styles.documentStatus}>Not uploaded</Text>
-          </View>
-          <TouchableOpacity style={styles.uploadBtn}>
-            <Upload color={theme.colors.primary} size={20} />
-          </TouchableOpacity>
-        </Card>
-
-        <Card style={styles.documentCard}>
-          <View style={styles.documentInfo}>
-            <Text style={styles.documentName}>Vehicle Insurance</Text>
-            <Text style={styles.documentStatus}>Not uploaded</Text>
-          </View>
-          <TouchableOpacity style={styles.uploadBtn}>
-            <Upload color={theme.colors.primary} size={20} />
-          </TouchableOpacity>
-        </Card>
-
         <Button
-          title="Complete Setup"
+          title="Continue"
           onPress={handleComplete}
           style={styles.completeBtn}
           disabled={!name || !vehicle}

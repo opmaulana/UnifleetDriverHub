@@ -1,31 +1,67 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
+  Modal,
+  FlatList,
+} from 'react-native';
 import { theme } from '../theme/theme';
 import { Card } from '../components/Card';
-import { Truck, Network, BarChart3, ChevronRight } from 'lucide-react-native';
+import { Truck, Network, BarChart3, ChevronRight, Globe, X, Check } from 'lucide-react-native';
+import { useTranslation } from '../hooks/useTranslation';
+import { useStore } from '../store/useStore';
+
+const LANGUAGES = [
+  { code: 'en' as const, name: 'English', flag: '🇬🇧' },
+  { code: 'sw' as const, name: 'Kiswahili', flag: '🇹🇿' },
+  { code: 'ar' as const, name: 'العربية', flag: '🇸🇦' },
+  { code: 'hi' as const, name: 'हिन्दी', flag: '🇮🇳' },
+  { code: 'fr' as const, name: 'Français', flag: '🇫🇷' },
+];
 
 export const IntentSelectionScreen = ({ navigation }: any) => {
+  const { isAuthenticated, user } = useStore();
+  const { t, language, setLanguage } = useTranslation();
+  const [langModalVisible, setLangModalVisible] = useState(false);
+
+  const currentLang = LANGUAGES.find((l) => l.code === language) || LANGUAGES[0];
+
   const options = [
     {
       id: 'drivers',
-      title: 'Drivers Hub',
-      description: 'Manage routes, deliveries, and vehicle status.',
+      title: t('asas_drivers'),
+      description: t('asas_drivers_desc'),
       icon: <Truck color={theme.colors.primary} size={32} />,
-      onPress: () => navigation.navigate('Login'),
+      onPress: () => {
+        if (isAuthenticated && user?.role === 'driver') {
+          if (!user.onboarding_completed) {
+            navigation.navigate('ProfileSetup', { phone: user.phone });
+          } else if (!user.permissions_granted) {
+            navigation.navigate('BackgroundCheck', { phone: user.phone });
+          } else {
+            navigation.navigate('Main');
+          }
+        } else {
+          navigation.navigate('Login');
+        }
+      },
     },
     {
       id: 'operators',
-      title: 'Operators',
-      description: 'Dispatch, tracking, and operational oversight.',
+      title: t('asas_live_ops'),
+      description: t('asas_live_ops_desc'),
       icon: <Network color={theme.colors.primary} size={32} />,
-      onPress: () => {},
+      onPress: () => navigation.navigate('OperationsFlow'),
     },
     {
       id: 'management',
-      title: 'Management',
-      description: 'Analytics, reporting, and strategic planning.',
+      title: t('asas_management'),
+      description: t('asas_management_desc'),
       icon: <BarChart3 color={theme.colors.primary} size={32} />,
-      onPress: () => {},
+      onPress: () => navigation.navigate('ManagementFlow'),
     },
   ];
 
@@ -34,14 +70,14 @@ export const IntentSelectionScreen = ({ navigation }: any) => {
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.brandText}>ASAS</Text>
-          <Text style={styles.welcomeText}>Welcome to ASAS.</Text>
-          <Text style={styles.subtitle}>Select your portal to continue.</Text>
+          <Text style={styles.welcomeText}>{t('welcome_asas')}</Text>
+          <Text style={styles.subtitle}>{t('select_portal')}</Text>
         </View>
 
         <View style={styles.optionsContainer}>
           {options.map((option) => (
-            <TouchableOpacity 
-              key={option.id} 
+            <TouchableOpacity
+              key={option.id}
               onPress={option.onPress}
               activeOpacity={0.7}
             >
@@ -59,13 +95,75 @@ export const IntentSelectionScreen = ({ navigation }: any) => {
           ))}
         </View>
 
+        {/* Language Selector */}
+        <TouchableOpacity
+          style={styles.langSelector}
+          onPress={() => setLangModalVisible(true)}
+          activeOpacity={0.7}
+        >
+          <Globe color={theme.colors.primary} size={20} />
+          <Text style={styles.langSelectorText}>
+            {currentLang.flag}  {currentLang.name}
+          </Text>
+          <ChevronRight color={theme.colors.border} size={16} />
+        </TouchableOpacity>
+
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            This platform was built by <Text style={styles.linkText}>Unifleet Labs</Text>
+            {t('built_by')} <Text style={styles.linkText}>Unifleet Labs</Text>
           </Text>
           <Text style={styles.versionText}>V1.3</Text>
         </View>
       </View>
+
+      {/* Language Modal */}
+      <Modal
+        animationType="fade"
+        transparent
+        visible={langModalVisible}
+        onRequestClose={() => setLangModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{t('select_language')}</Text>
+              <TouchableOpacity onPress={() => setLangModalVisible(false)}>
+                <X color="#261816" size={22} />
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={LANGUAGES}
+              keyExtractor={(item) => item.code}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.langItem,
+                    language === item.code && styles.langItemActive,
+                  ]}
+                  onPress={() => {
+                    setLanguage(item.code);
+                    setLangModalVisible(false);
+                  }}
+                >
+                  <Text style={styles.langFlag}>{item.flag}</Text>
+                  <Text
+                    style={[
+                      styles.langName,
+                      language === item.code && styles.langNameActive,
+                    ]}
+                  >
+                    {item.name}
+                  </Text>
+                  {language === item.code && (
+                    <Check color={theme.colors.primary} size={18} />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -73,7 +171,7 @@ export const IntentSelectionScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Subtle light background for premium look
+    backgroundColor: '#FAFAFA',
   },
   content: {
     flex: 1,
@@ -110,7 +208,6 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 20,
     backgroundColor: theme.colors.white,
-    // Slightly more pronounced shadow than default card
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
@@ -141,6 +238,91 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+
+  // ---- Language Selector ----
+  langSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 28,
+    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  langSelectorText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+
+  // ---- Modal ----
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    width: '100%',
+    maxHeight: 400,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#261816',
+  },
+  langItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 4,
+    gap: 12,
+  },
+  langItemActive: {
+    backgroundColor: theme.colors.primary + '10',
+  },
+  langFlag: {
+    fontSize: 22,
+  },
+  langName: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#261816',
+  },
+  langNameActive: {
+    fontWeight: '700',
+    color: theme.colors.primary,
+  },
+
+  // ---- Footer ----
   footer: {
     marginTop: 'auto',
     alignItems: 'center',
@@ -151,7 +333,7 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   linkText: {
-    color: '#2196F3', // Link blue
+    color: '#2196F3',
     fontWeight: '700',
   },
   versionText: {

@@ -20,6 +20,8 @@ import { TripDetailsScreen } from '../screens/TripDetailsScreen';
 import { ProofOfDeliveryScreen } from '../screens/ProofOfDeliveryScreen';
 import { TripSummaryScreen } from '../screens/TripSummaryScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
+import { ManagementNavigator } from './ManagementNavigator';
+import { OperationsNavigator } from './OperationsNavigator';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -97,6 +99,8 @@ export const AppNavigator = () => {
       <Stack.Screen name="ProofOfDelivery" component={ProofOfDeliveryScreen} />
       <Stack.Screen name="TripSummary" component={TripSummaryScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="ManagementFlow" component={ManagementNavigator} />
+      <Stack.Screen name="OperationsFlow" component={OperationsNavigator} />
     </Stack.Navigator>
   );
 };

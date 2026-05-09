@@ -11,10 +11,38 @@ import {
 import { theme } from '../theme/theme';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { useTranslation } from '../hooks/useTranslation';
+import { AuthService } from '../services/auth/authService';
+import { useStore } from '../store/useStore';
+import { Alert } from 'react-native';
 
 export const OTPScreen = ({ navigation, route }: any) => {
   const { phone } = route.params || {};
   const [otp, setOtp] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { t } = useTranslation();
+
+  const login = useStore(state => state.login);
+
+  const handleVerify = async () => {
+    if (otp.length < 6) return;
+    
+    setIsLoading(true);
+    const response = await AuthService.verifyOTP(phone, otp);
+    setIsLoading(false);
+    
+    if (response.success) {
+      if (response.isFirstTime) {
+        navigation.navigate('ProfileSetup', { phone });
+      } else {
+        // Driver is fully setup, log them in
+        login(phone);
+        navigation.navigate('Main');
+      }
+    } else {
+      Alert.alert('Verification Failed', response.error || 'Invalid code. Please try again.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -24,9 +52,9 @@ export const OTPScreen = ({ navigation, route }: any) => {
       >
         <View style={styles.inner}>
           <View style={styles.header}>
-            <Text style={styles.title}>Verification</Text>
+            <Text style={styles.title}>{t('verification')}</Text>
             <Text style={styles.subtitle}>
-              Enter the 6-digit code sent to {phone || 'your phone'}
+              {t('enter_code')} {phone || 'your phone'}
             </Text>
           </View>
 
@@ -41,15 +69,15 @@ export const OTPScreen = ({ navigation, route }: any) => {
             />
             
             <Button
-              title="Verify"
-              onPress={() => navigation.navigate('BackgroundCheck')}
+              title={isLoading ? "Verifying..." : t('verify_continue')}
+              onPress={handleVerify}
               style={styles.button}
-              disabled={otp.length < 6}
+              disabled={isLoading || otp.length < 6}
             />
 
             <TouchableOpacity style={styles.resend}>
-              <Text style={styles.resendText}>Didn't receive code? </Text>
-              <Text style={styles.resendLink}>Resend</Text>
+              <Text style={styles.resendText}>{t('resend_code')} </Text>
+              <Text style={styles.resendLink}>{t('resend')}</Text>
             </TouchableOpacity>
           </View>
 

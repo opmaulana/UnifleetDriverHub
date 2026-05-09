@@ -23,7 +23,6 @@ export const SplashScreen = ({ navigation }: any) => {
     <View style={styles.container}>
       <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
         <Text style={styles.logo}>ASAS</Text>
-        <Text style={styles.subtitle}>Driver Hub</Text>
       </Animated.View>
     </View>
   );
