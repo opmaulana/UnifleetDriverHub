@@ -16,9 +16,10 @@ interface User {
   driver_id: string;
   name: string;
   phone: string;
-  vehicle: string;
+  tracker_name: string;
   photo?: string;
-  role: 'driver';
+  role: 'DRIVER' | 'OPERATOR' | 'MANAGER' | 'UNASSIGNED';
+  approval_status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
   onboarding_completed: boolean;
   permissions_granted: boolean;
   isOnline: boolean;
@@ -30,17 +31,17 @@ interface AppState {
   activeTrip: Trip | null;
   trips: Trip[];
   notifications: any[];
-  language: 'en' | 'sw' | 'ar' | 'hi' | 'fr';
+  language: 'en' | 'sw';
   
   // Actions
-  login: (phone: string) => void;
+  login: (profile: any) => void;
   logout: () => void;
   setUser: (user: User) => void;
   toggleOnline: () => void;
   setActiveTrip: (trip: Trip | null) => void;
   updateTripStatus: (status: Trip['status']) => void;
   addNotification: (notification: any) => void;
-  setLanguage: (lang: 'en' | 'sw' | 'ar' | 'hi' | 'fr') => void;
+  setLanguage: (lang: 'en' | 'sw') => void;
 }
 
 export const useStore = create<AppState>()(
@@ -63,17 +64,18 @@ export const useStore = create<AppState>()(
   notifications: [],
   language: 'en',
 
-  login: (phone) => set({ 
+  login: (profile: any) => set({ 
     isAuthenticated: true, 
     user: { 
-      driver_id: 'mock-driver-123',
-      name: 'Driver John', 
-      phone, 
-      vehicle: 'KDJ 432L',
-      role: 'driver',
+      driver_id: profile.id || 'mock-driver-123',
+      name: profile.full_name || 'Driver John', 
+      phone: profile.phone_number || '', 
+      tracker_name: profile.tracker_name || 'CAG 1653 ZM FOTON',
+      role: profile.role || 'DRIVER',
+      approval_status: profile.approval_status || 'PENDING',
       onboarding_completed: true,
       permissions_granted: true,
-      isOnline: true 
+      isOnline: false 
     } 
   }),
   logout: () => set({ isAuthenticated: false, user: null, activeTrip: null }),

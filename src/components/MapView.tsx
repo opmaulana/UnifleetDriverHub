@@ -1,2 +1,2 @@
-import MapView from 'react-native-maps';
-export default MapView;
+export { default } from 'react-native-maps';
+export { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';

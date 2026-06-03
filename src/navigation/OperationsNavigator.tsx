@@ -1,15 +1,20 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Map, Truck, Bell, Settings } from 'lucide-react-native';
+import { Map, Truck, FileText, Bell, Settings } from 'lucide-react-native';
+import { useOperationsStore } from '../store/useOperationsStore';
 
-// Screens
-import { OperationsSignup } from '../screens/operations/OperationsSignup';
 import { OperationsLogin } from '../screens/operations/OperationsLogin';
 import { MapScreen } from '../screens/operations/MapScreen';
 import { FleetScreen } from '../screens/operations/FleetScreen';
+import { ReportsScreen } from '../screens/operations/ReportsScreen';
 import { AlertsScreen } from '../screens/operations/AlertsScreen';
 import { SettingsScreen } from '../screens/operations/SettingsScreen';
+import { ReportDetailScreen } from '../screens/reports/ReportDetailScreen';
+import { DashboardScreen } from '../screens/operations/DashboardScreen';
+import { GeofenceAnalyticsScreen } from '../screens/operations/GeofenceAnalyticsScreen';
+import { VehicleListScreen } from '../screens/operations/VehicleListScreen';
+import { VehicleDetailsScreen } from '../screens/operations/VehicleDetailsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -21,11 +26,30 @@ const ASAS_RED = '#C0392B';
 // ============================================================
 const OperationsTabNavigator = () => {
   const tabNavRef = useRef<any>(null);
+  const { bootstrapFleet, updateTelemetry } = useOperationsStore();
+  const hasBootstrapped = useRef(false);
+
+  // Single centralized bootstrap — runs once for the entire tab navigator
+  useEffect(() => {
+    if (!hasBootstrapped.current) {
+      hasBootstrapped.current = true;
+      bootstrapFleet();
+    }
+  }, []);
+
+  // Single centralized telemetry poller — runs once, shared across all tabs
+  useEffect(() => {
+    updateTelemetry();
+    const interval = setInterval(() => {
+      updateTelemetry();
+    }, 12000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Callback to programmatically switch to Settings tab
-  const navigateToSettings = (navigation: any) => {
+  const navigateToSettings = useCallback((navigation: any) => {
     navigation.navigate('Settings');
-  };
+  }, []);
 
   return (
     <Tab.Navigator
@@ -33,6 +57,7 @@ const OperationsTabNavigator = () => {
         headerShown: false,
         tabBarActiveTintColor: ASAS_RED,
         tabBarInactiveTintColor: '#8D706C',
+        lazy: true,
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 0,
@@ -81,6 +106,20 @@ const OperationsTabNavigator = () => {
         )}
       </Tab.Screen>
       <Tab.Screen
+        name="LiveReports"
+        options={{
+          tabBarLabel: 'LIVE REPORTS',
+          tabBarIcon: ({ color }) => <FileText color={color} size={20} />,
+        }}
+      >
+        {(props) => (
+          <ReportsScreen
+            {...props}
+            onNavigateToSettings={() => navigateToSettings(props.navigation)}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen
         name="LiveAlerts"
         options={{
           tabBarLabel: 'LIVE ALERTS',
@@ -104,27 +143,25 @@ const OperationsTabNavigator = () => {
           />
         )}
       </Tab.Screen>
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          tabBarLabel: 'SETTINGS',
-          tabBarIcon: ({ color }) => <Settings color={color} size={20} />,
-        }}
-      />
     </Tab.Navigator>
   );
 };
 
 // ============================================================
-// Operations Stack Navigator (Signup → Login → Main Tabs)
+// Operations Stack Navigator (Login → Main Tabs)
 // ============================================================
 export const OperationsNavigator = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="OperationsSignup" component={OperationsSignup} />
       <Stack.Screen name="OperationsLogin" component={OperationsLogin} />
       <Stack.Screen name="OperationsMain" component={OperationsTabNavigator} />
+      <Stack.Screen name="ReportDetail" component={ReportDetailScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Dashboard" component={DashboardScreen} />
+      <Stack.Screen name="GeofenceAnalytics" component={GeofenceAnalyticsScreen} />
+      <Stack.Screen name="VehicleList" component={VehicleListScreen} />
+      <Stack.Screen name="VehicleDetails" component={VehicleDetailsScreen} />
     </Stack.Navigator>
   );
 };
+

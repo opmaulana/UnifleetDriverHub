@@ -8,6 +8,7 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
+  Alert,
 } from 'react-native';
 import { theme } from '../../theme/theme';
 import { Button } from '../../components/Button';
@@ -16,8 +17,17 @@ import { Shield } from 'lucide-react-native';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export const ManagementLogin = ({ navigation }: any) => {
-  const [phone, setPhone] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const { t } = useTranslation();
+
+  const handleLogin = () => {
+    if (username.trim() === 'asas.team' && password === 'admin@1901') {
+      navigation.replace('ManagementDashboard');
+    } else {
+      Alert.alert('Login Failed', 'Invalid username or password.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -37,16 +47,23 @@ export const ManagementLogin = ({ navigation }: any) => {
 
             <View style={styles.form}>
               <Input
-                label={t('registered_mobile')}
-                placeholder="+254 700 000 000"
-                keyboardType="phone-pad"
-                value={phone}
-                onChangeText={setPhone}
+                label="Username"
+                placeholder="Enter username"
+                autoCapitalize="none"
+                value={username}
+                onChangeText={setUsername}
+              />
+              <Input
+                label="Password"
+                placeholder="Enter password"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
               />
 
               <Button
                 title={t('continue_btn')}
-                onPress={() => navigation.replace('ManagementDashboard')}
+                onPress={handleLogin}
                 style={styles.button}
               />
             </View>

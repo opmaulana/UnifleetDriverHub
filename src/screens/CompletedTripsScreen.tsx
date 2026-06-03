@@ -1,38 +1,84 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { GlobalHeader } from '../components/GlobalHeader';
 import { theme } from '../theme/theme';
 import { Card } from '../components/Card';
 import { CheckCircle, MapPin, ChevronRight, Calendar } from 'lucide-react-native';
-
-const COMPLETED_DATA = [
-  {
-    id: '1',
-    date: '22 April, 2024',
-    pickup: 'Nairobi West',
-    dropoff: 'Parklands',
-    earnings: 'KSh 600',
-    status: 'Delivered',
-  },
-  {
-    id: '2',
-    date: '21 April, 2024',
-    pickup: 'Kileleshwa',
-    dropoff: 'Lavington',
-    earnings: 'KSh 400',
-    status: 'Delivered',
-  },
-  {
-    id: '3',
-    date: '21 April, 2024',
-    pickup: 'CBD',
-    dropoff: 'Upperhill',
-    earnings: 'KSh 350',
-    status: 'Delivered',
-  },
-];
+import { supabase } from '../lib/supabase';
+import { useStore } from '../store/useStore';
 
 export const CompletedTripsScreen = () => {
+  const { user } = useStore();
+  const [tripsData, setTripsData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.tracker_name) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchCompletedTrips = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('live_trips')
+          .select('*')
+          .ilike('tracker_name', `%${user.tracker_name}%`)
+          .order('start_time', { ascending: false })
+          .limit(30);
+
+        if (error) {
+          console.warn('Error fetching completed trips:', error);
+          return;
+        }
+
+        if (data) {
+          const mapped = data.map((t: any) => {
+            // Format date nicely
+            let formattedDate = t.trip_date || 'Recent';
+            if (t.start_time) {
+              const d = new Date(t.start_time);
+              if (!isNaN(d.getTime())) {
+                formattedDate = d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+              }
+            }
+
+            const dist = Number(t.distance_km) || 0;
+            // KSh 120 per km + 1000 KSh base pay
+            const simulatedEarnings = Math.round(dist * 120 + 1000);
+
+            // Pickup & Dropoff names
+            const pickup = t.start_lat && t.start_lng
+              ? `Origin (lat: ${Number(t.start_lat).toFixed(4)}, lng: ${Number(t.start_lng).toFixed(4)})`
+              : 'Active Corridor';
+            const dropoff = t.end_lat && t.end_lng
+              ? `Destination (lat: ${Number(t.end_lat).toFixed(4)}, lng: ${Number(t.end_lng).toFixed(4)})`
+              : 'Endpoint Corridor';
+
+            return {
+              id: String(t.id),
+              date: formattedDate,
+              pickup,
+              dropoff,
+              earnings: `KSh ${simulatedEarnings.toLocaleString()}`,
+              distance: `${dist.toFixed(1)} km`,
+              duration: t.duration_seconds ? `${Math.round(t.duration_seconds / 60)} min` : '-- min',
+              status: 'Delivered',
+            };
+          });
+          setTripsData(mapped);
+        }
+      } catch (err) {
+        console.warn('Exception fetching completed trips:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCompletedTrips();
+  }, [user?.tracker_name]);
+
   const renderItem = ({ item }: any) => (
     <TouchableOpacity style={styles.cardWrapper}>
       <Card style={styles.card}>
@@ -60,6 +106,9 @@ export const CompletedTripsScreen = () => {
         </View>
 
         <View style={styles.cardFooter}>
+          <View style={styles.metaContainer}>
+            <Text style={styles.metaText}>{item.distance} • {item.duration}</Text>
+          </View>
           <Text style={styles.earningsValue}>{item.earnings}</Text>
           <ChevronRight size={18} color={theme.colors.border} />
         </View>
@@ -71,14 +120,29 @@ export const CompletedTripsScreen = () => {
     <View style={styles.container}>
       <GlobalHeader />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Completed Trips</Text>
+        <Text style={styles.headerTitle}>Completed Trips ({tripsData.length})</Text>
+        {user?.tracker_name && (
+          <Text style={styles.headerSubtitle}>Vehicle: {user.tracker_name}</Text>
+        )}
       </View>
-      <FlatList
-        data={COMPLETED_DATA}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-      />
+      {loading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Fetching database trip records...</Text>
+        </View>
+      ) : tripsData.length === 0 ? (
+        <View style={styles.centerContainer}>
+          <CheckCircle size={48} color={theme.colors.border} />
+          <Text style={styles.emptyText}>No completed trips found for this vehicle.</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={tripsData}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
     </View>
   );
 };
@@ -98,6 +162,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...theme.typography.h2,
     color: theme.colors.text,
+  },
+  headerSubtitle: {
+    ...theme.typography.labelSm,
+    color: theme.colors.primary,
+    marginTop: 4,
+    fontWeight: '600',
   },
   listContent: {
     padding: theme.spacing.lg,
@@ -172,9 +242,35 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.border,
     paddingTop: theme.spacing.sm,
   },
+  metaContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaText: {
+    ...theme.typography.labelSm,
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+  },
   earningsValue: {
     ...theme.typography.bodyMd,
     fontWeight: '700',
     color: theme.colors.text,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  loadingText: {
+    ...theme.typography.bodyMd,
+    color: theme.colors.textSecondary,
+    marginTop: 12,
+  },
+  emptyText: {
+    ...theme.typography.bodyMd,
+    color: theme.colors.textSecondary,
+    marginTop: 12,
+    textAlign: 'center',
   },
 });

@@ -2,17 +2,16 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { theme } from '../theme/theme';
-import { Home, Calendar, CheckCircle, Wallet, User } from 'lucide-react-native';
+import { Home, CheckCircle, Wallet, User } from 'lucide-react-native';
 
 // Import Screens
 import { SplashScreen } from '../screens/SplashScreen';
 import { IntentSelectionScreen } from '../screens/IntentSelectionScreen';
-import { LoginScreen } from '../screens/LoginScreen';
-import { OTPScreen } from '../screens/OTPScreen';
-import { BackgroundCheckScreen } from '../screens/BackgroundCheckScreen';
-import { ProfileSetupScreen } from '../screens/ProfileSetupScreen';
+import { DriverSignupScreen } from '../screens/DriverSignupScreen';
+import { DriverSignInScreen } from '../screens/DriverSignInScreen';
+import { ApprovalPendingScreen } from '../screens/ApprovalPendingScreen';
 import { HomeDashboard } from '../screens/HomeDashboard';
-import { UpcomingTripsScreen } from '../screens/UpcomingTripsScreen';
+
 import { CompletedTripsScreen } from '../screens/CompletedTripsScreen';
 import { EarningsScreen } from '../screens/EarningsScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
@@ -53,13 +52,7 @@ const TabNavigator = () => {
           tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
         }}
       />
-      <Tab.Screen 
-        name="Upcoming" 
-        component={UpcomingTripsScreen} 
-        options={{
-          tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />,
-        }}
-      />
+
       <Tab.Screen 
         name="Completed" 
         component={CompletedTripsScreen} 
@@ -90,10 +83,9 @@ export const AppNavigator = () => {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="IntentSelection" component={IntentSelectionScreen} />
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="OTP" component={OTPScreen} />
-      <Stack.Screen name="BackgroundCheck" component={BackgroundCheckScreen} />
-      <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
+      <Stack.Screen name="DriverSignup" component={DriverSignupScreen} />
+      <Stack.Screen name="DriverSignIn" component={DriverSignInScreen} />
+      <Stack.Screen name="ApprovalPending" component={ApprovalPendingScreen} />
       <Stack.Screen name="Main" component={TabNavigator} />
       <Stack.Screen name="TripDetails" component={TripDetailsScreen} />
       <Stack.Screen name="ProofOfDelivery" component={ProofOfDeliveryScreen} />

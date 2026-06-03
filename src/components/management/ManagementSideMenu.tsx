@@ -101,7 +101,7 @@ export const ManagementSideMenu = ({ visible, onClose, navigation }: ManagementS
             ]}
           >
             {/* Header */}
-            <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
+            <View style={[styles.header, { paddingTop: insets.top }]}>
               <View style={styles.headerTop}>
                 <Text style={styles.brandText}>ASAS FLEET</Text>
                 <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    height: 50,
   },
   brandText: {
     fontSize: 18,
@@ -209,7 +209,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  profileSection: {},
+  profileSection: {
+    marginTop: 8,
+  },
   activeShiftText: {
     fontSize: 11,
     color: '#81C784',

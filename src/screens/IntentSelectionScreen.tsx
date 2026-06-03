@@ -13,13 +13,11 @@ import { Card } from '../components/Card';
 import { Truck, Network, BarChart3, ChevronRight, Globe, X, Check } from 'lucide-react-native';
 import { useTranslation } from '../hooks/useTranslation';
 import { useStore } from '../store/useStore';
+import { supabase } from '../lib/supabase';
 
 const LANGUAGES = [
   { code: 'en' as const, name: 'English', flag: '🇬🇧' },
   { code: 'sw' as const, name: 'Kiswahili', flag: '🇹🇿' },
-  { code: 'ar' as const, name: 'العربية', flag: '🇸🇦' },
-  { code: 'hi' as const, name: 'हिन्दी', flag: '🇮🇳' },
-  { code: 'fr' as const, name: 'Français', flag: '🇫🇷' },
 ];
 
 export const IntentSelectionScreen = ({ navigation }: any) => {
@@ -35,17 +33,30 @@ export const IntentSelectionScreen = ({ navigation }: any) => {
       title: t('asas_drivers'),
       description: t('asas_drivers_desc'),
       icon: <Truck color={theme.colors.primary} size={32} />,
-      onPress: () => {
-        if (isAuthenticated && user?.role === 'driver') {
-          if (!user.onboarding_completed) {
-            navigation.navigate('ProfileSetup', { phone: user.phone });
-          } else if (!user.permissions_granted) {
-            navigation.navigate('BackgroundCheck', { phone: user.phone });
+      onPress: async () => {
+        if (isAuthenticated && user?.role === 'DRIVER') {
+          try {
+            // Check real-time status from Supabase
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('approval_status')
+              .eq('id', user.driver_id)
+              .single();
+              
+            if (!error && data) {
+              user.approval_status = data.approval_status;
+              // update store
+              useStore.getState().setUser(user);
+            }
+          } catch (e) {}
+
+          if (user.approval_status === 'PENDING') {
+            navigation.navigate('ApprovalPending');
           } else {
             navigation.navigate('Main');
           }
         } else {
-          navigation.navigate('Login');
+          navigation.navigate('DriverSignup');
         }
       },
     },

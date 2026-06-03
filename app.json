@@ -36,6 +36,8 @@
         {
           "RNMapboxMapsImpl": "mapbox"
         }
+      ],
+      "expo-localization"
     ]
   }
 }

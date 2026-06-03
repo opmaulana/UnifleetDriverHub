@@ -13,12 +13,9 @@ export const GlobalHeader = ({ rightComponent }: { rightComponent?: React.ReactN
   const languages = [
     { code: 'en', name: 'English' },
     { code: 'sw', name: 'Kiswahili' },
-    { code: 'ar', name: 'العربية' },
-    { code: 'hi', name: 'हिन्दी' },
-    { code: 'fr', name: 'Français' },
   ] as const;
 
-  const selectLang = (code: 'en' | 'sw' | 'ar' | 'hi' | 'fr') => {
+  const selectLang = (code: 'en' | 'sw') => {
     setLanguage(code);
     setModalVisible(false);
   };

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,16 +15,21 @@ import {
 import {
   Menu,
   X,
-  ShieldAlert,
-  Timer,
-  FileBarChart,
   LayoutDashboard,
   Settings,
   ChevronRight,
   Globe,
   Check,
+  RotateCw,
+  LogOut,
+  ArrowLeft,
+  Truck,
+  Lightbulb,
+  MapPin,
 } from 'lucide-react-native';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useOperationsStore } from '../../store/useOperationsStore';
+import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 
 const ASAS_RED = '#C0392B';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -36,28 +41,22 @@ interface OperationsHeaderProps {
 
 const menuItems = [
   {
-    id: 'safety',
-    label: 'Safety',
-    icon: <ShieldAlert size={20} color="#261816" />,
-    description: 'Compliance & safety protocols',
-  },
-  {
-    id: 'tat',
-    label: 'Turnaround Time',
-    icon: <Timer size={20} color="#261816" />,
-    description: 'TAT analytics & performance',
-  },
-  {
-    id: 'reports',
-    label: 'Reports',
-    icon: <FileBarChart size={20} color="#261816" />,
-    description: 'Operational reports & exports',
-  },
-  {
     id: 'dashboards',
     label: 'Dashboards',
     icon: <LayoutDashboard size={20} color="#261816" />,
     description: 'Fleet intelligence dashboards',
+  },
+  {
+    id: 'geofence_analytics',
+    label: 'Geofence Analytics',
+    icon: <MapPin size={20} color="#261816" />,
+    description: 'Zone violations & analytics history',
+  },
+  {
+    id: 'vehicle_list',
+    label: 'Vehicle List',
+    icon: <Truck size={20} color="#261816" />,
+    description: 'Real-time fleet tracker roster',
   },
   {
     id: 'settings',
@@ -65,24 +64,68 @@ const menuItems = [
     icon: <Settings size={20} color="#261816" />,
     description: 'App & account configuration',
   },
+  {
+    id: 'request_feature',
+    label: 'Request a Feature',
+    icon: <Lightbulb size={20} color="#261816" />,
+    description: 'Suggest improvements or custom tools',
+  },
 ];
 
 const LANGUAGES = [
   { code: 'en' as const, name: 'English', flag: '🇬🇧' },
   { code: 'sw' as const, name: 'Kiswahili', flag: '🇹🇿' },
-  { code: 'ar' as const, name: 'العربية', flag: '🇸🇦' },
-  { code: 'hi' as const, name: 'हिन्दी', flag: '🇮🇳' },
-  { code: 'fr' as const, name: 'Français', flag: '🇫🇷' },
 ];
 
 export const OperationsHeader: React.FC<OperationsHeaderProps> = ({
   onNavigateToSettings,
 }) => {
+  const navigation = useNavigation<any>();
+  const route = useRoute();
+  const isSettingsPage = route.name === 'Settings';
+
   const [menuVisible, setMenuVisible] = useState(false);
   const [langModalVisible, setLangModalVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
   const { t, language, setLanguage } = useTranslation();
+
+  const { isLoading, bootstrapFleet } = useOperationsStore();
+  const spinAnim = useRef(new Animated.Value(0)).current;
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  useEffect(() => {
+    if (isLoading) {
+      spinAnim.setValue(0);
+      animationRef.current = Animated.loop(
+        Animated.timing(spinAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        })
+      );
+      animationRef.current.start();
+    } else {
+      if (animationRef.current) {
+        animationRef.current.stop();
+        animationRef.current = null;
+      }
+      Animated.timing(spinAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isLoading]);
+
+  const spin = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const handleReload = () => {
+    bootstrapFleet();
+  };
 
   const openMenu = () => {
     setMenuVisible(true);
@@ -117,25 +160,80 @@ export const OperationsHeader: React.FC<OperationsHeaderProps> = ({
     });
   };
 
+  const [loggingOut, setLoggingOut] = useState(false);
+  const splashOpacity = useRef(new Animated.Value(0)).current;
+  const splashScale = useRef(new Animated.Value(0.8)).current;
+
+  const handleLogout = () => {
+    closeMenu();
+    // Tiny delay to let drawer close animation play slightly, then trigger full screen splash
+    setTimeout(() => {
+      setLoggingOut(true);
+      Animated.parallel([
+        Animated.timing(splashOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(splashScale, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setTimeout(() => {
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: 'IntentSelection' }],
+            })
+          );
+        }, 1200);
+      });
+    }, 150);
+  };
+
   const handleMenuPress = (id: string) => {
-    if (id === 'settings' && onNavigateToSettings) {
-      closeMenu();
-      // Small delay to let animation finish before tab switch
-      setTimeout(() => {
-        onNavigateToSettings();
-      }, 250);
-    } else {
-      // For other items — close menu (placeholder for future navigation)
-      closeMenu();
-    }
+    closeMenu();
+    setTimeout(() => {
+      if (id === 'settings') {
+        navigation.navigate('Settings');
+      } else if (id === 'dashboards') {
+        navigation.navigate('Dashboard');
+      } else if (id === 'geofence_analytics') {
+        navigation.navigate('GeofenceAnalytics');
+      } else if (id === 'vehicle_list') {
+        navigation.navigate('VehicleList');
+      } else if (id === 'request_feature') {
+        alert('Thank you! Tell us what custom features or charts you want on your fleet dashboard, and we will build it for you.');
+      }
+    }, 250);
   };
 
   return (
     <>
       {/* Header Bar */}
       <View style={styles.headerBar}>
-        <Text style={styles.headerBrand}>ASAS</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {isSettingsPage && (
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+              <ArrowLeft color="#FFFFFF" size={20} style={{ marginRight: 8 }} />
+            </TouchableOpacity>
+          )}
+          <Text style={styles.headerBrand}>ASAS</Text>
+        </View>
         <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={handleReload}
+            style={styles.reloadBtn}
+            disabled={isLoading}
+            activeOpacity={0.7}
+          >
+            <Animated.View style={{ transform: [{ rotate: spin }], width: 20, height: 20, justifyContent: 'center', alignItems: 'center' }}>
+              <RotateCw color="#FFFFFF" size={20} />
+            </Animated.View>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setLangModalVisible(true)}
             style={styles.globeBtn}
@@ -176,11 +274,8 @@ export const OperationsHeader: React.FC<OperationsHeaderProps> = ({
             </TouchableOpacity>
           </View>
 
-          {/* Drawer Subtitle */}
-          <View style={styles.drawerSubHeader}>
-            <Text style={styles.drawerSubTitle}>Operational Modules</Text>
-            <View style={styles.drawerDivider} />
-          </View>
+          {/* Drawer Spacer */}
+          <View style={{ height: 16 }} />
 
           {/* Menu Items */}
           {menuItems.map((item, index) => (
@@ -201,6 +296,16 @@ export const OperationsHeader: React.FC<OperationsHeaderProps> = ({
               <ChevronRight size={16} color="#8D706C" />
             </TouchableOpacity>
           ))}
+
+          {/* Logout Button */}
+          <TouchableOpacity
+            style={styles.drawerLogoutBtn}
+            onPress={handleLogout}
+            activeOpacity={0.7}
+          >
+            <LogOut size={16} color="#BA1A1A" />
+            <Text style={styles.drawerLogoutText}>{t('log_out') || 'Log Out'}</Text>
+          </TouchableOpacity>
 
           {/* Footer */}
           <View style={styles.drawerFooter}>
@@ -259,6 +364,26 @@ export const OperationsHeader: React.FC<OperationsHeaderProps> = ({
           </View>
         </View>
       </Modal>
+
+      {/* Logout Splash Overlay */}
+      {loggingOut && (
+        <Animated.View
+          style={[
+            styles.splashOverlay,
+            { opacity: splashOpacity },
+          ]}
+        >
+          <Animated.View
+            style={[
+              styles.splashContent,
+              { transform: [{ scale: splashScale }] },
+            ]}
+          >
+            <Text style={styles.splashBrand}>ASAS</Text>
+            <Text style={styles.splashSub}>Live Ops</Text>
+          </Animated.View>
+        </Animated.View>
+      )}
     </>
   );
 };
@@ -293,6 +418,13 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   globeBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reloadBtn: {
     width: 38,
     height: 38,
     borderRadius: 8,
@@ -481,5 +613,54 @@ const styles = StyleSheet.create({
   langNameActive: {
     fontWeight: '700',
     color: ASAS_RED,
+  },
+  backBtn: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  drawerLogoutBtn: {
+    position: 'absolute',
+    bottom: 100,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 48,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#BA1A1A',
+    backgroundColor: '#FFFFFF',
+  },
+  drawerLogoutText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#BA1A1A',
+  },
+  splashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  splashContent: {
+    alignItems: 'center',
+  },
+  splashBrand: {
+    fontSize: 64,
+    fontWeight: '900',
+    color: '#C0392B',
+    letterSpacing: -2,
+  },
+  splashSub: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    marginTop: 8,
+    letterSpacing: 4,
+    textTransform: 'uppercase',
   },
 });
