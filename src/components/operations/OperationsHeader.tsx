@@ -34,6 +34,7 @@ import { useNavigation, useRoute, CommonActions } from '@react-navigation/native
 const ASAS_RED = '#C0392B';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight || 40) : 44;
+const DRAWER_WIDTH = Platform.OS === 'web' ? 360 : Math.min(SCREEN_WIDTH * 0.78, 360);
 
 interface OperationsHeaderProps {
   onNavigateToSettings?: () => void;
@@ -86,7 +87,7 @@ export const OperationsHeader: React.FC<OperationsHeaderProps> = ({
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [langModalVisible, setLangModalVisible] = useState(false);
-  const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
+  const slideAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
   const { t, language, setLanguage } = useTranslation();
 
@@ -146,7 +147,7 @@ export const OperationsHeader: React.FC<OperationsHeaderProps> = ({
   const closeMenu = () => {
     Animated.parallel([
       Animated.timing(slideAnim, {
-        toValue: SCREEN_WIDTH,
+        toValue: DRAWER_WIDTH,
         duration: 220,
         useNativeDriver: true,
       }),
@@ -247,75 +248,143 @@ export const OperationsHeader: React.FC<OperationsHeaderProps> = ({
       </View>
 
       {/* Slide-out Menu */}
-      <Modal
-        visible={menuVisible}
-        transparent
-        animationType="none"
-        statusBarTranslucent
-        onRequestClose={closeMenu}
-      >
-        {/* Overlay */}
-        <Animated.View style={[styles.overlay, { opacity: overlayAnim }]}>
-          <Pressable style={styles.overlayPressable} onPress={closeMenu} />
-        </Animated.View>
+      {Platform.OS === 'web' ? (
+        menuVisible && (
+          <View style={[StyleSheet.absoluteFill, { zIndex: 9999, overflow: 'hidden' }]}>
+            {/* Overlay */}
+            <Animated.View style={[styles.overlay, { opacity: overlayAnim }]}>
+              <Pressable style={styles.overlayPressable} onPress={closeMenu} />
+            </Animated.View>
 
-        {/* Drawer Panel */}
-        <Animated.View
-          style={[
-            styles.drawerPanel,
-            { transform: [{ translateX: slideAnim }] },
-          ]}
-        >
-          {/* Drawer Header */}
-          <View style={styles.drawerHeader}>
-            <Text style={styles.drawerTitle}>ASAS COMMAND</Text>
-            <TouchableOpacity onPress={closeMenu} style={styles.closeBtn}>
-              <X color="#FFFFFF" size={22} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Drawer Spacer */}
-          <View style={{ height: 16 }} />
-
-          {/* Menu Items */}
-          {menuItems.map((item, index) => (
-            <TouchableOpacity
-              key={item.id}
+            {/* Drawer Panel */}
+            <Animated.View
               style={[
-                styles.menuItem,
-                index === menuItems.length - 1 && styles.menuItemLast,
+                styles.drawerPanel,
+                { transform: [{ translateX: slideAnim }] },
               ]}
-              onPress={() => handleMenuPress(item.id)}
-              activeOpacity={0.6}
             >
-              <View style={styles.menuItemIcon}>{item.icon}</View>
-              <View style={styles.menuItemText}>
-                <Text style={styles.menuItemLabel}>{item.label}</Text>
-                <Text style={styles.menuItemDesc}>{item.description}</Text>
+              {/* Drawer Header */}
+              <View style={styles.drawerHeader}>
+                <Text style={styles.drawerTitle}>ASAS COMMAND</Text>
+                <TouchableOpacity onPress={closeMenu} style={styles.closeBtn}>
+                  <X color="#FFFFFF" size={22} />
+                </TouchableOpacity>
               </View>
-              <ChevronRight size={16} color="#8D706C" />
-            </TouchableOpacity>
-          ))}
 
-          {/* Logout Button */}
-          <TouchableOpacity
-            style={styles.drawerLogoutBtn}
-            onPress={handleLogout}
-            activeOpacity={0.7}
-          >
-            <LogOut size={16} color="#BA1A1A" />
-            <Text style={styles.drawerLogoutText}>{t('log_out') || 'Log Out'}</Text>
-          </TouchableOpacity>
+              {/* Drawer Spacer */}
+              <View style={{ height: 16 }} />
 
-          {/* Footer */}
-          <View style={styles.drawerFooter}>
-            <Text style={styles.drawerFooterText}>
-              Powered by Uni Fleet Intelligence
-            </Text>
-            <Text style={styles.drawerVersion}>v4.2.1-stable</Text>
+              {/* Menu Items */}
+              {menuItems.map((item, index) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.menuItem,
+                    index === menuItems.length - 1 && styles.menuItemLast,
+                  ]}
+                  onPress={() => handleMenuPress(item.id)}
+                  activeOpacity={0.6}
+                >
+                  <View style={item.id === 'dashboards' ? [styles.menuItemIcon, { backgroundColor: '#FADBD8' }] : styles.menuItemIcon}>{item.icon}</View>
+                  <View style={styles.menuItemText}>
+                    <Text style={styles.menuItemLabel}>{item.label}</Text>
+                    <Text style={styles.menuItemDesc}>{item.description}</Text>
+                  </View>
+                  <ChevronRight size={16} color="#8D706C" />
+                </TouchableOpacity>
+              ))}
+
+              {/* Logout Button */}
+              <TouchableOpacity
+                style={styles.drawerLogoutBtn}
+                onPress={handleLogout}
+                activeOpacity={0.7}
+              >
+                <LogOut size={16} color="#BA1A1A" />
+                <Text style={styles.drawerLogoutText}>{t('log_out') || 'Log Out'}</Text>
+              </TouchableOpacity>
+
+              {/* Footer */}
+              <View style={styles.drawerFooter}>
+                <Text style={styles.drawerFooterText}>
+                  Powered by Uni Fleet Intelligence
+                </Text>
+                <Text style={styles.drawerVersion}>v4.2.1-stable</Text>
+              </View>
+            </Animated.View>
           </View>
-        </Animated.View>
-      </Modal>
+        )
+      ) : (
+        <Modal
+          visible={menuVisible}
+          transparent
+          animationType="none"
+          statusBarTranslucent
+          onRequestClose={closeMenu}
+        >
+          {/* Overlay */}
+          <Animated.View style={[styles.overlay, { opacity: overlayAnim }]}>
+            <Pressable style={styles.overlayPressable} onPress={closeMenu} />
+          </Animated.View>
+
+          {/* Drawer Panel */}
+          <Animated.View
+            style={[
+              styles.drawerPanel,
+              { transform: [{ translateX: slideAnim }] },
+            ]}
+          >
+            {/* Drawer Header */}
+            <View style={styles.drawerHeader}>
+              <Text style={styles.drawerTitle}>ASAS COMMAND</Text>
+              <TouchableOpacity onPress={closeMenu} style={styles.closeBtn}>
+                <X color="#FFFFFF" size={22} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Drawer Spacer */}
+            <View style={{ height: 16 }} />
+
+            {/* Menu Items */}
+            {menuItems.map((item, index) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.menuItem,
+                  index === menuItems.length - 1 && styles.menuItemLast,
+                ]}
+                onPress={() => handleMenuPress(item.id)}
+                activeOpacity={0.6}
+              >
+                <View style={styles.menuItemIcon}>{item.icon}</View>
+                <View style={styles.menuItemText}>
+                  <Text style={styles.menuItemLabel}>{item.label}</Text>
+                  <Text style={styles.menuItemDesc}>{item.description}</Text>
+                </View>
+                <ChevronRight size={16} color="#8D706C" />
+              </TouchableOpacity>
+            ))}
+
+            {/* Logout Button */}
+            <TouchableOpacity
+              style={styles.drawerLogoutBtn}
+              onPress={handleLogout}
+              activeOpacity={0.7}
+            >
+              <LogOut size={16} color="#BA1A1A" />
+              <Text style={styles.drawerLogoutText}>{t('log_out') || 'Log Out'}</Text>
+            </TouchableOpacity>
+
+            {/* Footer */}
+            <View style={styles.drawerFooter}>
+              <Text style={styles.drawerFooterText}>
+                Powered by Uni Fleet Intelligence
+              </Text>
+              <Text style={styles.drawerVersion}>v4.2.1-stable</Text>
+            </View>
+          </Animated.View>
+        </Modal>
+      )}
 
       {/* Language Selection Modal */}
       <Modal
@@ -447,8 +516,7 @@ const styles = StyleSheet.create({
     top: 0,
     right: 0,
     bottom: 0,
-    width: SCREEN_WIDTH * 0.78,
-    maxWidth: 360,
+    width: DRAWER_WIDTH,
     backgroundColor: '#FFF8F6',
     shadowColor: '#000',
     shadowOffset: { width: -4, height: 0 },

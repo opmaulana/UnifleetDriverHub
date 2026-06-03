@@ -7,6 +7,7 @@ import {
   Modal,
   Animated,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { theme } from '../../theme/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ import { X, LayoutDashboard, Truck, Map, FileText, LifeBuoy, LogOut } from 'luci
 import { CommonActions } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
+const DRAWER_WIDTH = Platform.OS === 'web' ? 320 : Math.min(width * 0.78, 320);
 
 interface ManagementSideMenuProps {
   visible: boolean;
@@ -28,7 +30,7 @@ export const ManagementSideMenu = ({ visible, onClose, navigation }: ManagementS
   const splashScale = useRef(new Animated.Value(0.8)).current;
 
   // Slide from RIGHT (positive direction)
-  const slideAnim = useRef(new Animated.Value(width)).current;
+  const slideAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current;
 
   React.useEffect(() => {
     if (visible) {
@@ -39,7 +41,7 @@ export const ManagementSideMenu = ({ visible, onClose, navigation }: ManagementS
       }).start();
     } else {
       Animated.timing(slideAnim, {
-        toValue: width,
+        toValue: DRAWER_WIDTH,
         duration: 220,
         useNativeDriver: true,
       }).start();
@@ -90,62 +92,123 @@ export const ManagementSideMenu = ({ visible, onClose, navigation }: ManagementS
 
   return (
     <>
-      <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-        <View style={styles.overlay}>
-          <TouchableOpacity style={styles.backgroundTouchable} onPress={onClose} activeOpacity={1} />
+      {Platform.OS === 'web' ? (
+        visible && (
+          <View style={[StyleSheet.absoluteFill, { zIndex: 9999, overflow: 'hidden' }]}>
+            <View style={styles.overlay}>
+              <TouchableOpacity style={styles.backgroundTouchable} onPress={onClose} activeOpacity={1} />
 
-          <Animated.View
-            style={[
-              styles.drawer,
-              { transform: [{ translateX: slideAnim }] },
-            ]}
-          >
-            {/* Header */}
-            <View style={[styles.header, { paddingTop: insets.top }]}>
-              <View style={styles.headerTop}>
-                <Text style={styles.brandText}>ASAS FLEET</Text>
-                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                  <X color={theme.colors.white} size={22} />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.profileSection}>
-                <Text style={styles.activeShiftText}>Active Shift</Text>
-                <Text style={styles.officerName}>Officer: John Doe</Text>
-              </View>
+              <Animated.View
+                style={[
+                  styles.drawer,
+                  { transform: [{ translateX: slideAnim }] },
+                ]}
+              >
+                {/* Header */}
+                <View style={[styles.header, { paddingTop: insets.top }]}>
+                  <View style={styles.headerTop}>
+                    <Text style={styles.brandText}>ASAS FLEET</Text>
+                    <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                      <X color={theme.colors.white} size={22} />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.profileSection}>
+                    <Text style={styles.activeShiftText}>Active Shift</Text>
+                    <Text style={styles.officerName}>Officer: John Doe</Text>
+                  </View>
+                </View>
+
+                {/* Menu Items */}
+                <View style={styles.menuContainer}>
+                  {menuItems.map((item, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.menuItem}
+                      onPress={() => handleNavigation(item.route)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.menuIcon}>{item.icon}</View>
+                      <Text style={styles.menuLabel}>{item.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Logout + Footer */}
+                <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
+                  <TouchableOpacity
+                    style={styles.logoutBtn}
+                    onPress={handleLogout}
+                    activeOpacity={0.7}
+                  >
+                    <LogOut size={18} color="#BA1A1A" />
+                    <Text style={styles.logoutText}>Log Out</Text>
+                  </TouchableOpacity>
+
+                  <Text style={styles.developedBy}>DEVELOPED BY UNIFLEET LABS</Text>
+                  <Text style={styles.versionText}>v2.4.1 (Field Ready)</Text>
+                </View>
+              </Animated.View>
             </View>
+          </View>
+        )
+      ) : (
+        <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+          <View style={styles.overlay}>
+            <TouchableOpacity style={styles.backgroundTouchable} onPress={onClose} activeOpacity={1} />
 
-            {/* Menu Items */}
-            <View style={styles.menuContainer}>
-              {menuItems.map((item, index) => (
+            <Animated.View
+              style={[
+                styles.drawer,
+                { transform: [{ translateX: slideAnim }] },
+              ]}
+            >
+              {/* Header */}
+              <View style={[styles.header, { paddingTop: insets.top }]}>
+                <View style={styles.headerTop}>
+                  <Text style={styles.brandText}>ASAS FLEET</Text>
+                  <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                    <X color={theme.colors.white} size={22} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.profileSection}>
+                  <Text style={styles.activeShiftText}>Active Shift</Text>
+                  <Text style={styles.officerName}>Officer: John Doe</Text>
+                </View>
+              </View>
+
+              {/* Menu Items */}
+              <View style={styles.menuContainer}>
+                {menuItems.map((item, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.menuItem}
+                    onPress={() => handleNavigation(item.route)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.menuIcon}>{item.icon}</View>
+                    <Text style={styles.menuLabel}>{item.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Logout + Footer */}
+              <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
                 <TouchableOpacity
-                  key={index}
-                  style={styles.menuItem}
-                  onPress={() => handleNavigation(item.route)}
+                  style={styles.logoutBtn}
+                  onPress={handleLogout}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.menuIcon}>{item.icon}</View>
-                  <Text style={styles.menuLabel}>{item.label}</Text>
+                  <LogOut size={18} color="#BA1A1A" />
+                  <Text style={styles.logoutText}>Log Out</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
 
-            {/* Logout + Footer */}
-            <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
-              <TouchableOpacity
-                style={styles.logoutBtn}
-                onPress={handleLogout}
-                activeOpacity={0.7}
-              >
-                <LogOut size={18} color="#BA1A1A" />
-                <Text style={styles.logoutText}>Log Out</Text>
-              </TouchableOpacity>
-
-              <Text style={styles.developedBy}>DEVELOPED BY UNIFLEET LABS</Text>
-              <Text style={styles.versionText}>v2.4.1 (Field Ready)</Text>
-            </View>
-          </Animated.View>
-        </View>
-      </Modal>
+                <Text style={styles.developedBy}>DEVELOPED BY UNIFLEET LABS</Text>
+                <Text style={styles.versionText}>v2.4.1 (Field Ready)</Text>
+              </View>
+            </Animated.View>
+          </View>
+        </Modal>
+      )}
 
       {/* Global Logout Splash (same as boot splash) */}
       {loggingOut && (
@@ -176,8 +239,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    width: width * 0.78,
-    maxWidth: 320,
+    width: DRAWER_WIDTH,
     backgroundColor: theme.colors.white,
     shadowColor: '#000',
     shadowOffset: { width: -4, height: 0 },
