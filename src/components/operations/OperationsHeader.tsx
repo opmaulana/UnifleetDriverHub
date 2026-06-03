@@ -448,6 +448,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     width: SCREEN_WIDTH * 0.78,
+    maxWidth: 360,
     backgroundColor: '#FFF8F6',
     shadowColor: '#000',
     shadowOffset: { width: -4, height: 0 },
