@@ -46,12 +46,12 @@ const patchTextComponent = (Component: any) => {
 
     const resolvedFontFamily = flatStyle.fontFamily || family;
 
-    // Apply the custom font family while preserving original styles
+    // Apply the custom font family by merging it into the flattened style object to prevent array-style crashes on web
     return React.cloneElement(origin, {
-      style: [
-        { fontFamily: resolvedFontFamily },
-        style,
-      ],
+      style: {
+        ...flatStyle,
+        fontFamily: resolvedFontFamily,
+      },
     });
   };
 };
