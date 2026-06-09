@@ -40,6 +40,7 @@ export const LoginScreen = ({ navigation }: any) => {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
+        enabled={Platform.OS !== 'web'}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.inner}>

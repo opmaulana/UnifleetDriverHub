@@ -49,6 +49,7 @@ export const OTPScreen = ({ navigation, route }: any) => {
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
+        enabled={Platform.OS !== 'web'}
       >
         <View style={styles.inner}>
           <View style={styles.header}>

@@ -64,7 +64,11 @@ export const DriverSignInScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        style={{ flex: 1 }}
+        enabled={Platform.OS !== 'web'}
+      >
         <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <TouchableOpacity
