@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Platform, View, Text, StyleSheet, TouchableOpacity, ScrollView, useWindowDimensions } from 'react-native';
+import { Platform, View, Text, StyleSheet, TouchableOpacity, ScrollView, useWindowDimensions, Linking } from 'react-native';
 import { theme } from '../theme/theme';
+
+const ANDROID_DOWNLOAD_URL = '#'; // Replace with your APK download link
+const IOS_DOWNLOAD_URL = '#'; // Replace with your TestFlight / App Store link
 
 interface WebPhoneWrapperProps {
   children: React.ReactNode;
@@ -163,6 +166,43 @@ export const WebPhoneWrapper: React.FC<WebPhoneWrapperProps> = ({ children }) =>
               </Text>
               <View style={styles.wifiBadge}>
                 <Text style={styles.wifiBadgeText}>📡 Local Network Mode</Text>
+              </View>
+            </View>
+
+            {/* Download App Card */}
+            <View style={styles.downloadCard}>
+              <Text style={styles.downloadTitle}>📲 Get the Native App</Text>
+              <Text style={styles.downloadText}>
+                Install the native ASAS Driver application directly on your device.
+              </Text>
+              <View style={styles.downloadButtonRow}>
+                <TouchableOpacity 
+                  style={styles.downloadButton}
+                  onPress={() => {
+                    if (ANDROID_DOWNLOAD_URL && ANDROID_DOWNLOAD_URL !== '#') {
+                      Linking.openURL(ANDROID_DOWNLOAD_URL);
+                    } else {
+                      alert('Android APK download link will be available here once the EAS build is completed.');
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.downloadButtonText}>🤖 Android APK</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.downloadButton}
+                  onPress={() => {
+                    if (IOS_DOWNLOAD_URL && IOS_DOWNLOAD_URL !== '#') {
+                      Linking.openURL(IOS_DOWNLOAD_URL);
+                    } else {
+                      alert('iOS App Store / TestFlight link will be available here once the EAS build is completed.');
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.downloadButtonText}>🍎 iOS App</Text>
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -623,5 +663,45 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 2.5,
     backgroundColor: '#ffffff',
+  },
+  downloadCard: {
+    backgroundColor: '#151518',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#222227',
+    marginBottom: 20,
+  },
+  downloadTitle: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  downloadText: {
+    color: '#8e8e93',
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  downloadButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  downloadButton: {
+    flex: 1,
+    backgroundColor: '#222227',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#3a3a3c',
+  },
+  downloadButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
