@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Platform, View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { Platform, View, Text, StyleSheet, TouchableOpacity, ScrollView, useWindowDimensions } from 'react-native';
 import { theme } from '../theme/theme';
 
 interface WebPhoneWrapperProps {
@@ -9,13 +9,33 @@ interface WebPhoneWrapperProps {
 type PreviewMode = 'iphone' | 'iphone_large' | 'fullscreen';
 
 export const WebPhoneWrapper: React.FC<WebPhoneWrapperProps> = ({ children }) => {
-  // If not web, just render children directly without any wrapping
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+
+  // If not web, scale the app content to 80% (0.8) to fit the phone screen
   if (Platform.OS !== 'web') {
-    return <>{children}</>;
+    const scale = 0.8;
+    const virtualWidth = windowWidth / scale;
+    const virtualHeight = windowHeight / scale;
+    
+    return (
+      <View style={{ flex: 1, backgroundColor: '#000000' }}>
+        <View style={{
+          position: 'absolute',
+          left: (windowWidth - virtualWidth) / 2,
+          top: (windowHeight - virtualHeight) / 2,
+          width: virtualWidth,
+          height: virtualHeight,
+          transform: [{ scale }],
+        }}>
+          {children}
+        </View>
+      </View>
+    );
   }
 
   const [previewMode, setPreviewMode] = useState<PreviewMode>('iphone');
   const [time, setTime] = useState('');
+  const zoomScale = 0.8;
   const [screenWidth, setScreenWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
   // Sync window resize
@@ -180,7 +200,14 @@ export const WebPhoneWrapper: React.FC<WebPhoneWrapperProps> = ({ children }) =>
           )}
 
           {/* Smartphone outer body bezel */}
-          <View style={[styles.phoneBezel, { width: dimensions.width + 24, height: dimensions.height + 24 }]}>
+          <View style={[
+            styles.phoneBezel, 
+            { 
+              width: dimensions.width + 24, 
+              height: dimensions.height + 24,
+              transform: [{ scale: 0.85 }]
+            }
+          ]}>
             
             {/* Speaker & Sensor Notch (Dynamic Island Style) */}
             <View style={styles.dynamicIsland}>
@@ -215,7 +242,14 @@ export const WebPhoneWrapper: React.FC<WebPhoneWrapperProps> = ({ children }) =>
 
               {/* The Actual App */}
               <View style={styles.appContainer}>
-                {children}
+                <View style={{
+                  width: dimensions.width / zoomScale,
+                  height: (dimensions.height - 48 - 24) / zoomScale,
+                  transform: [{ scale: zoomScale }],
+                  transformOrigin: 'top left',
+                } as any}>
+                  {children}
+                </View>
               </View>
 
               {/* Simulated iOS Home Indicator */}

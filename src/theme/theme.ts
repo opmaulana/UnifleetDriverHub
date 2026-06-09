@@ -34,43 +34,36 @@ export const theme = {
   },
   typography: {
     h1: {
-      fontFamily: 'Tinos-Bold',
       fontSize: 34,
       fontWeight: '700' as const,
       lineHeight: 41,
     },
     h2: {
-      fontFamily: 'Tinos-Bold',
       fontSize: 28,
       fontWeight: '700' as const,
       lineHeight: 34,
     },
     h3: {
-      fontFamily: 'Tinos-Bold',
       fontSize: 22,
       fontWeight: '600' as const,
       lineHeight: 28,
     },
     bodyLg: {
-      fontFamily: 'Tinos-Regular',
       fontSize: 20,
       fontWeight: '500' as const,
       lineHeight: 26,
     },
     bodyMd: {
-      fontFamily: 'Tinos-Regular',
       fontSize: 17,
       fontWeight: '400' as const,
       lineHeight: 22,
     },
     labelLg: {
-      fontFamily: 'Tinos-Bold',
       fontSize: 15,
       fontWeight: '600' as const,
       lineHeight: 20,
     },
     labelSm: {
-      fontFamily: 'Tinos-Regular',
       fontSize: 13,
       fontWeight: '500' as const,
       lineHeight: 18,

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, SafeAreaView, TouchableWithoutFeedback, Keyboar
 import { theme } from '../theme/theme';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
-import { Shield } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import { fetchAllTrackerLabels } from '../lib/navixyApi';
@@ -19,6 +19,14 @@ export const DriverSignupScreen = ({ navigation }: any) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const login = useStore(state => state.login);
+
+  const handleBackPress = () => {
+    if (navigation.canGoBack?.()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.replace('IntentSelection');
+  };
 
   useEffect(() => {
     const fetchTrackers = async () => {
@@ -175,9 +183,13 @@ export const DriverSignupScreen = ({ navigation }: any) => {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
             <View style={styles.header}>
-              <View style={styles.iconContainer}>
-                <Shield color={theme.colors.primary} size={48} />
-              </View>
+              <TouchableOpacity
+                style={styles.headerBackButton}
+                onPress={handleBackPress}
+                activeOpacity={0.8}
+              >
+                <ArrowLeft size={20} color={theme.colors.text} />
+              </TouchableOpacity>
               <Text style={styles.title}>Driver Registration</Text>
               <Text style={styles.subtitle}>Enter your details to request access to the ASAS Drivers Hub.</Text>
             </View>
@@ -256,6 +268,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAFAFA',
   },
+  headerBackButton: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+  },
   inner: {
     flexGrow: 1,
     padding: 24,
@@ -264,21 +293,15 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 40,
-  },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    backgroundColor: theme.colors.primary + '15',
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
+    position: 'relative',
+    width: '100%',
   },
   title: {
     ...theme.typography.h1,
     color: theme.colors.text,
     marginBottom: 8,
     textAlign: 'center',
+    paddingHorizontal: 48,
   },
   subtitle: {
     ...theme.typography.bodyMd,

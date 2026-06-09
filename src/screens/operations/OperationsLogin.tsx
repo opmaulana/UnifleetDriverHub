@@ -9,16 +9,14 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   TouchableOpacity,
-  StatusBar,
 } from 'react-native';
 import { theme } from '../../theme/theme';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
-import { ChevronLeft, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
 import { useTranslation } from '../../hooks/useTranslation';
 
-export const OperationsLogin = ({ navigation, route }: any) => {
-  const phone = route?.params?.phone || '';
+export const OperationsLogin = ({ navigation }: any) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -34,20 +32,16 @@ export const OperationsLogin = ({ navigation, route }: any) => {
     navigation.replace('OperationsMain');
   };
 
+  const handleBackPress = () => {
+    if (navigation.canGoBack?.()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.getParent?.()?.navigate?.('IntentSelection');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* ASAS COMMAND Header */}
-      <View style={styles.headerBar}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <ChevronLeft color="#FFFFFF" size={24} />
-        </TouchableOpacity>
-        <Text style={styles.headerBrand}>ASAS COMMAND</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
@@ -56,9 +50,13 @@ export const OperationsLogin = ({ navigation, route }: any) => {
           <View style={styles.inner}>
             {/* Hero */}
             <View style={styles.hero}>
-              <View style={styles.iconRing}>
-                <Lock color="#C0392B" size={36} />
-              </View>
+              <TouchableOpacity
+                style={styles.headerBackButton}
+                onPress={handleBackPress}
+                activeOpacity={0.8}
+              >
+                <ArrowLeft size={20} color={theme.colors.text} />
+              </TouchableOpacity>
               <Text style={styles.title}>{t('operator_auth')}</Text>
               <Text style={styles.subtitle}>
                 {t('login_subtitle')}
@@ -144,33 +142,28 @@ export const OperationsLogin = ({ navigation, route }: any) => {
 };
 
 const ASAS_RED = '#C0392B';
-const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight || 40) : 44;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF8F6',
+    backgroundColor: '#FAFAFA',
   },
-  headerBar: {
-    height: 56 + STATUS_BAR_HEIGHT,
-    paddingTop: STATUS_BAR_HEIGHT,
-    backgroundColor: ASAS_RED,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
+  headerBackButton: {
+    position: 'absolute',
+    top: -8,
+    left: 0,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  headerBrand: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 1.5,
+    zIndex: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
   },
   flex: {
     flex: 1,
@@ -182,16 +175,9 @@ const styles = StyleSheet.create({
   },
   hero: {
     alignItems: 'center',
-    marginTop: 24,
-  },
-  iconRing: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FFE5E1',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
+    marginTop: 112,
+    position: 'relative',
+    width: '100%',
   },
   title: {
     fontSize: 24,
@@ -199,6 +185,7 @@ const styles = StyleSheet.create({
     color: '#261816',
     textAlign: 'center',
     letterSpacing: 0.5,
+    paddingHorizontal: 48,
   },
   subtitle: {
     fontSize: 14,

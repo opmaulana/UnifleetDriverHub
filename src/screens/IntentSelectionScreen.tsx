@@ -79,45 +79,47 @@ export const IntentSelectionScreen = ({ navigation }: any) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.brandText}>ASAS</Text>
-          <Text style={styles.welcomeText}>{t('welcome_asas')}</Text>
-          <Text style={styles.subtitle}>{t('select_portal')}</Text>
-        </View>
+        <View style={styles.mainCenterContainer}>
+          <View style={styles.header}>
+            <Text style={styles.brandText}>ASAS</Text>
+            <Text style={styles.welcomeText}>{t('welcome_asas')}</Text>
+            <Text style={styles.subtitle}>{t('select_portal')}</Text>
+          </View>
 
-        <View style={styles.optionsContainer}>
-          {options.map((option) => (
-            <TouchableOpacity
-              key={option.id}
-              onPress={option.onPress}
-              activeOpacity={0.7}
-            >
-              <Card style={styles.optionCard}>
-                <View style={styles.iconBackground}>
-                  {option.icon}
-                </View>
-                <View style={styles.textContainer}>
-                  <Text style={styles.optionTitle}>{option.title}</Text>
-                  <Text style={styles.optionDescription}>{option.description}</Text>
-                </View>
-                <ChevronRight color={theme.colors.border} size={20} />
-              </Card>
-            </TouchableOpacity>
-          ))}
-        </View>
+          <View style={styles.optionsContainer}>
+            {options.map((option) => (
+              <TouchableOpacity
+                key={option.id}
+                onPress={option.onPress}
+                activeOpacity={0.7}
+              >
+                <Card style={styles.optionCard}>
+                  <View style={styles.iconBackground}>
+                    {option.icon}
+                  </View>
+                  <View style={styles.textContainer}>
+                    <Text style={styles.optionTitle}>{option.title}</Text>
+                    <Text style={styles.optionDescription}>{option.description}</Text>
+                  </View>
+                  <ChevronRight color={theme.colors.border} size={20} />
+                </Card>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-        {/* Language Selector */}
-        <TouchableOpacity
-          style={styles.langSelector}
-          onPress={() => setLangModalVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Globe color={theme.colors.primary} size={20} />
-          <Text style={styles.langSelectorText}>
-            {currentLang.flag}  {currentLang.name}
-          </Text>
-          <ChevronRight color={theme.colors.border} size={16} />
-        </TouchableOpacity>
+          {/* Language Selector */}
+          <TouchableOpacity
+            style={styles.langSelector}
+            onPress={() => setLangModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Globe color={theme.colors.primary} size={20} />
+            <Text style={styles.langSelectorText}>
+              {currentLang.flag}  {currentLang.name}
+            </Text>
+            <ChevronRight color={theme.colors.border} size={16} />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
@@ -187,7 +189,12 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 40,
+  },
+  mainCenterContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    width: '100%',
+    paddingVertical: 16,
   },
   header: {
     alignItems: 'center',

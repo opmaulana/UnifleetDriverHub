@@ -9,17 +9,26 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { theme } from '../../theme/theme';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
-import { Shield } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export const ManagementLogin = ({ navigation }: any) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const { t } = useTranslation();
+
+  const handleBackPress = () => {
+    if (navigation.canGoBack?.()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.getParent?.()?.navigate?.('IntentSelection');
+  };
 
   const handleLogin = () => {
     if (username.trim() === 'asas.team' && password === 'admin@1901') {
@@ -38,9 +47,13 @@ export const ManagementLogin = ({ navigation }: any) => {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.inner}>
             <View style={styles.header}>
-              <View style={styles.iconContainer}>
-                <Shield color={theme.colors.primary} size={48} />
-              </View>
+              <TouchableOpacity
+                style={styles.headerBackButton}
+                onPress={handleBackPress}
+                activeOpacity={0.8}
+              >
+                <ArrowLeft size={20} color={theme.colors.text} />
+              </TouchableOpacity>
               <Text style={styles.title}>{t('officer_login')}</Text>
               <Text style={styles.subtitle}>{t('enter_registered')}</Text>
             </View>
@@ -85,6 +98,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.white,
   },
+  headerBackButton: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+  },
   flex: {
     flex: 1,
   },
@@ -94,22 +124,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   header: {
-    marginTop: theme.spacing.xxl,
+    marginTop: theme.spacing.xxl + 152,
     alignItems: 'center',
-  },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FCEAEA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
+    position: 'relative',
+    width: '100%',
   },
   title: {
     ...theme.typography.h1,
     color: theme.colors.text,
     textAlign: 'center',
+    paddingHorizontal: 48,
   },
   subtitle: {
     ...theme.typography.bodyMd,
