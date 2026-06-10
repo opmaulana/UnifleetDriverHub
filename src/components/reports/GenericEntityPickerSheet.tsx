@@ -7,11 +7,13 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Search, Check } from 'lucide-react-native';
 import { ReusableBottomSheet } from './ReusableBottomSheet';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const SHEET_HEIGHT = Platform.OS === 'web' ? 400 : SCREEN_HEIGHT * 0.45;
 
 interface GenericEntityPickerSheetProps {
   visible: boolean;
@@ -163,7 +165,7 @@ export const GenericEntityPickerSheet = ({
 
 const styles = StyleSheet.create({
   container: {
-    height: SCREEN_HEIGHT * 0.45,
+    height: SHEET_HEIGHT,
   },
   searchBar: {
     flexDirection: 'row',

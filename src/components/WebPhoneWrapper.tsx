@@ -72,7 +72,7 @@ export const WebPhoneWrapper: React.FC<WebPhoneWrapperProps> = ({ children }) =>
 
   if (effectiveMode === 'fullscreen') {
     return (
-      <View style={styles.fullscreenContainer}>
+      <View nativeID="asas-web-app-frame" style={styles.fullscreenContainer}>
         {children}
         {/* Floating Toggle Panel for Web developers */}
         {screenWidth >= 500 && (
@@ -281,7 +281,7 @@ export const WebPhoneWrapper: React.FC<WebPhoneWrapperProps> = ({ children }) =>
               </View>
 
               {/* The Actual App */}
-              <View style={styles.appContainer}>
+              <View nativeID="asas-web-app-frame" style={styles.appContainer}>
                 <View style={{
                   width: dimensions.width / zoomScale,
                   height: (dimensions.height - 48 - 24) / zoomScale,

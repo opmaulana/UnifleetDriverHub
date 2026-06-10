@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TouchableWithoutFeedback,
   Dimensions,
   PanResponder,
+  Platform,
 } from 'react-native';
 import { X } from 'lucide-react-native';
 import { theme } from '../../theme/theme';
@@ -29,9 +30,46 @@ export const ReusableBottomSheet = ({
   children,
 }: ReusableBottomSheetProps) => {
   const animatedValue = useRef(new Animated.Value(0)).current;
+  const sheetViewportHeightRef = useRef(SCREEN_HEIGHT);
+  const [webFrameRect, setWebFrameRect] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
+  const isWeb = Platform.OS === 'web';
+
+  useEffect(() => {
+    if (!isWeb || !visible || typeof document === 'undefined') return;
+
+    const updateFrameRect = () => {
+      const frame = document.getElementById('asas-web-app-frame');
+      const rect = frame?.getBoundingClientRect();
+      if (!rect) {
+        setWebFrameRect(null);
+        return;
+      }
+      setWebFrameRect({
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      });
+    };
+
+    updateFrameRect();
+    window.addEventListener('resize', updateFrameRect);
+    return () => window.removeEventListener('resize', updateFrameRect);
+  }, [isWeb, visible]);
 
   useEffect(() => {
     if (visible) {
+      if (isWeb) {
+        animatedValue.setValue(1);
+        return;
+      }
+
       Animated.timing(animatedValue, {
         toValue: 1,
         duration: 300,
@@ -44,9 +82,17 @@ export const ReusableBottomSheet = ({
         useNativeDriver: true,
       }).start();
     }
-  }, [visible]);
+  }, [visible, isWeb, animatedValue]);
+
+  const sheetViewportHeight = isWeb && webFrameRect ? webFrameRect.height : SCREEN_HEIGHT;
+  sheetViewportHeightRef.current = sheetViewportHeight;
 
   const handleClose = () => {
+    if (isWeb) {
+      onClose();
+      return;
+    }
+
     Animated.timing(animatedValue, {
       toValue: 0,
       duration: 220,
@@ -58,7 +104,7 @@ export const ReusableBottomSheet = ({
 
   const translateY = animatedValue.interpolate({
     inputRange: [0, 1],
-    outputRange: [SCREEN_HEIGHT * 0.8, 0],
+    outputRange: [sheetViewportHeight * 0.8, 0],
   });
 
   const backdropOpacity = animatedValue.interpolate({
@@ -71,7 +117,7 @@ export const ReusableBottomSheet = ({
       onStartShouldSetPanResponder: () => true,
       onPanResponderMove: (evt, gestureState) => {
         if (gestureState.dy > 0) {
-          animatedValue.setValue(1 - gestureState.dy / (SCREEN_HEIGHT * 0.5));
+          animatedValue.setValue(1 - gestureState.dy / (sheetViewportHeightRef.current * 0.5));
         }
       },
       onPanResponderRelease: (evt, gestureState) => {
@@ -89,6 +135,26 @@ export const ReusableBottomSheet = ({
     })
   ).current;
 
+  const overlayStyle =
+    isWeb && webFrameRect
+      ? [
+          styles.overlay,
+          styles.webOverlayFrame,
+          {
+            left: webFrameRect.left,
+            top: webFrameRect.top,
+            width: webFrameRect.width,
+            height: webFrameRect.height,
+          },
+        ]
+      : styles.overlay;
+  const backdropStyle = isWeb ? { opacity: visible ? 0.4 : 0 } : { opacity: backdropOpacity };
+  const sheetMotionStyle = isWeb ? null : { transform: [{ translateY }] };
+
+  if (isWeb && visible && !webFrameRect) {
+    return null;
+  }
+
   return (
     <Modal
       transparent
@@ -96,15 +162,19 @@ export const ReusableBottomSheet = ({
       animationType="none"
       onRequestClose={handleClose}
     >
-      <View style={styles.overlay}>
+      <View style={overlayStyle}>
         {/* Backdrop */}
         <TouchableWithoutFeedback onPress={handleClose}>
-          <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} />
+          <Animated.View style={[styles.backdrop, backdropStyle]} />
         </TouchableWithoutFeedback>
 
         {/* Content Sheet */}
         <Animated.View
-          style={[styles.sheet, { transform: [{ translateY }] }]}
+          style={[
+            styles.sheet,
+            { maxHeight: sheetViewportHeight * 0.85 },
+            sheetMotionStyle,
+          ]}
           {...panResponder.panHandlers}
         >
           {/* Top handle and drag indicator */}
@@ -133,6 +203,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
   },
+  webOverlayFrame: {
+    position: 'absolute',
+    flex: 0,
+    overflow: 'hidden',
+  },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000000',
@@ -142,7 +217,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 8,
-    maxHeight: SCREEN_HEIGHT * 0.85,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -10 },
     shadowOpacity: 0.1,

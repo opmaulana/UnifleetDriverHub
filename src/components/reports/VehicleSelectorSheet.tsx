@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Search, Check, Square, CheckSquare } from 'lucide-react-native';
 import { ReusableBottomSheet } from './ReusableBottomSheet';
@@ -14,6 +15,7 @@ import { useOperationsStore } from '../../store/useOperationsStore';
 import { theme } from '../../theme/theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const SHEET_HEIGHT = Platform.OS === 'web' ? 430 : SCREEN_HEIGHT * 0.5;
 
 interface VehicleSelectorSheetProps {
   visible: boolean;
@@ -151,7 +153,7 @@ export const VehicleSelectorSheet = ({
 
 const styles = StyleSheet.create({
   container: {
-    height: SCREEN_HEIGHT * 0.5,
+    height: SHEET_HEIGHT,
   },
   searchBar: {
     flexDirection: 'row',
