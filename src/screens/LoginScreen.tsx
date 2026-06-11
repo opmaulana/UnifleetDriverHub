@@ -42,7 +42,7 @@ export const LoginScreen = ({ navigation }: any) => {
         style={styles.flex}
         enabled={Platform.OS !== 'web'}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <TouchableWithoutFeedback onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
           <View style={styles.inner}>
             <View style={styles.header}>
               <Text style={styles.title}>{t('welcome_back')}</Text>

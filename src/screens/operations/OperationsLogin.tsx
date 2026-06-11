@@ -47,7 +47,7 @@ export const OperationsLogin = ({ navigation }: any) => {
         style={styles.flex}
         enabled={Platform.OS !== 'web'}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <TouchableWithoutFeedback onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
           <View style={styles.inner}>
             {/* Hero */}
             <View style={styles.hero}>
