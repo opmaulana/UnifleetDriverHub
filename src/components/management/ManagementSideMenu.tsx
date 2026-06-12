@@ -212,14 +212,23 @@ export const ManagementSideMenu = ({ visible, onClose, navigation }: ManagementS
 
       {/* Global Logout Splash (same as boot splash) */}
       {loggingOut && (
-        <Modal visible transparent animationType="none">
-          <Animated.View style={[styles.splashOverlay, { opacity: splashOpacity }]}>
-            <Animated.View style={[styles.splashContent, { transform: [{ scale: splashScale }] }]}>
+        Platform.OS === 'web' ? (
+          <View style={[StyleSheet.absoluteFill, styles.splashOverlay, { zIndex: 99999 }]}>
+            <Animated.View style={[styles.splashContent, { opacity: splashOpacity, transform: [{ scale: splashScale }] }]}>
               <Text style={styles.splashLogo}>ASAS</Text>
-              <Text style={styles.splashSub}>Management</Text>
+              <Text style={styles.splashSub}>Management Hub</Text>
             </Animated.View>
-          </Animated.View>
-        </Modal>
+          </View>
+        ) : (
+          <Modal visible transparent animationType="none">
+            <Animated.View style={[styles.splashOverlay, { opacity: splashOpacity }]}>
+              <Animated.View style={[styles.splashContent, { transform: [{ scale: splashScale }] }]}>
+                <Text style={styles.splashLogo}>ASAS</Text>
+                <Text style={styles.splashSub}>Management Hub</Text>
+              </Animated.View>
+            </Animated.View>
+          </Modal>
+        )
       )}
     </>
   );

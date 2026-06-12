@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Menu, Globe, X } from 'lucide-react-native';
 import { theme } from '../theme/theme';
@@ -8,7 +8,14 @@ import { useTranslation } from '../hooks/useTranslation';
 export const GlobalHeader = ({ rightComponent }: { rightComponent?: React.ReactNode }) => {
   const insets = useSafeAreaInsets();
   const [modalVisible, setModalVisible] = useState(false);
+  const [webFrameRect, setWebFrameRect] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const { t, setLanguage } = useTranslation();
+  const isWeb = Platform.OS === 'web';
 
   const languages = [
     { code: 'en', name: 'English' },
@@ -19,6 +26,45 @@ export const GlobalHeader = ({ rightComponent }: { rightComponent?: React.ReactN
     setLanguage(code);
     setModalVisible(false);
   };
+
+  useEffect(() => {
+    if (!isWeb || !modalVisible || typeof document === 'undefined') return;
+
+    const updateFrameRect = () => {
+      const frame = document.getElementById('asas-web-app-frame');
+      const rect = frame?.getBoundingClientRect();
+
+      if (!rect) {
+        setWebFrameRect(null);
+        return;
+      }
+
+      setWebFrameRect({
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      });
+    };
+
+    updateFrameRect();
+    window.addEventListener('resize', updateFrameRect);
+    return () => window.removeEventListener('resize', updateFrameRect);
+  }, [isWeb, modalVisible]);
+
+  const modalOverlayStyle =
+    isWeb && webFrameRect
+      ? [
+          styles.modalOverlay,
+          styles.webModalOverlay,
+          {
+            left: webFrameRect.left,
+            top: webFrameRect.top,
+            width: webFrameRect.width,
+            height: webFrameRect.height,
+          },
+        ]
+      : styles.modalOverlay;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -49,8 +95,8 @@ export const GlobalHeader = ({ rightComponent }: { rightComponent?: React.ReactN
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <View style={modalOverlayStyle}>
+          <View style={[styles.modalContent, isWeb && styles.webModalContent]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{t('select_language')}</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -112,6 +158,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: theme.spacing.lg,
   },
+  webModalOverlay: {
+    position: 'absolute',
+    flex: 0,
+    overflow: 'hidden',
+  },
   modalContent: {
     backgroundColor: theme.colors.white,
     borderRadius: theme.borderRadius.md,
@@ -123,6 +174,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 5,
+  },
+  webModalContent: {
+    width: '88%',
+    maxHeight: 260,
   },
   modalHeader: {
     flexDirection: 'row',

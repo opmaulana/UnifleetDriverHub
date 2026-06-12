@@ -61,8 +61,9 @@ const MapView = React.forwardRef(({ style, children, initialRegion }: any, ref: 
   const markersData = React.useMemo(() => {
     return React.Children.toArray(children)
       .filter((child: any) => child && child.props && child.props.coordinate)
-      .map((child: any) => {
-        const { coordinate, identifier, onPress, statusColor, initials: propInitials, selected: propSelected } = child.props;
+      .map((child: any, index) => {
+        const { coordinate, identifier, title, description, onPress, statusColor, initials: propInitials, selected: propSelected } = child.props;
+        const markerId = identifier || title || description || `marker-${index}`;
         
         // 1. Direct props resolve (bulletproof)
         let color = statusColor || '#7F8C8D';
@@ -94,15 +95,15 @@ const MapView = React.forwardRef(({ style, children, initialRegion }: any, ref: 
         }
 
         // Fallback initials calculation
-        if (!initials && identifier) {
-          const clean = identifier.replace(/[^a-zA-Z0-9]/g, '').trim();
+        if (!initials && markerId) {
+          const clean = markerId.replace(/[^a-zA-Z0-9]/g, '').trim();
           initials = clean.substring(0, 2).toUpperCase();
         } else if (!initials) {
           initials = 'TR';
         }
 
         return {
-          id: identifier,
+          id: markerId,
           latitude: coordinate.latitude,
           longitude: coordinate.longitude,
           color,

@@ -9,6 +9,7 @@ import { Bell, MapPin, Navigation, Clock, CreditCard, ArrowLeft, Truck, AlertTri
 import { useTranslation } from '../hooks/useTranslation';
 import { useLiveTracking } from '../hooks/useLiveTracking';
 import { supabase } from '../lib/supabase';
+import { logDriverTripEvent } from '../services/driverTripEvents';
 
 // Haversine formula for distance between two coordinates
 const getDistanceKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -34,13 +35,38 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const COLLAPSED_HEIGHT = 180;
 const EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.75;
 const SNAP_THRESHOLD = 80;
+const PROXIMITY_START_KM = 0.5;
+const ENGINE_IDLE_WARNING_SECONDS = 120;
+
+const formatTimer = (seconds: number): string => {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const days = Math.floor(safeSeconds / 86400);
+  const hours = Math.floor((safeSeconds % 86400) / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const secs = safeSeconds % 60;
+  const clock = [hours, minutes, secs].map(value => String(value).padStart(2, '0')).join(':');
+  return days > 0 ? `${days}d ${clock}` : clock;
+};
 
 export const HomeDashboard = ({ navigation }: any) => {
-  const { user, toggleOnline, activeTrip, trips, setActiveTrip } = useStore();
+  const {
+    user,
+    toggleOnline,
+    activeTrip,
+    trips,
+    setActiveTrip,
+    driverTripSession,
+    startDriverTrip,
+    stopDriverTrip,
+    resumeDriverTrip,
+    markDriverDelivered,
+    setDriverTripNearby,
+  } = useStore();
   const [isSOSVisible, setIsSOSVisible] = useState(false);
   const [isNightPillExpanded, setIsNightPillExpanded] = useState(false);
   const [isSpeedPillExpanded, setIsSpeedPillExpanded] = useState(false);
   const [isTruckSelected, setIsTruckSelected] = useState(false);
+  const [clockNow, setClockNow] = useState(Date.now());
   const { t } = useTranslation();
   const tracking = useLiveTracking();
   const mapRef = useRef<MapView>(null);
@@ -162,6 +188,95 @@ export const HomeDashboard = ({ navigation }: any) => {
 
   const driverInitial = user?.name?.charAt(0)?.toUpperCase() || 'D';
   const truckInitial = user?.tracker_name?.charAt(0)?.toUpperCase() || 'T';
+  const isWithinStartRange = distanceKm !== null && distanceKm <= PROXIMITY_START_KM;
+  const hasLivePair = Boolean(tracking.driverLat && tracking.driverLng && tracking.truckLat && tracking.truckLng);
+
+  useEffect(() => {
+    if (isWithinStartRange && !driverTripSession) {
+      setDriverTripNearby();
+    }
+  }, [isWithinStartRange, driverTripSession, setDriverTripNearby]);
+
+  useEffect(() => {
+    if (!driverTripSession || !['active', 'stopped', 'delivered_pending_approval'].includes(driverTripSession.status)) return;
+    const timer = setInterval(() => setClockNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [driverTripSession?.status]);
+
+  const activeSeconds = useMemo(() => {
+    if (!driverTripSession) return 0;
+    const liveSeconds = driverTripSession.status === 'active' && driverTripSession.lastResumedAt
+      ? Math.max(0, Math.floor((clockNow - new Date(driverTripSession.lastResumedAt).getTime()) / 1000))
+      : 0;
+    return driverTripSession.totalActiveSeconds + liveSeconds;
+  }, [driverTripSession, clockNow]);
+
+  const stoppedSeconds = useMemo(() => {
+    if (!driverTripSession) return 0;
+    const liveSeconds = driverTripSession.status === 'stopped' && driverTripSession.currentStopStartedAt
+      ? Math.max(0, Math.floor((clockNow - new Date(driverTripSession.currentStopStartedAt).getTime()) / 1000))
+      : 0;
+    return driverTripSession.totalStoppedSeconds + liveSeconds;
+  }, [driverTripSession, clockNow]);
+
+  const driverTripTitle = useMemo(() => {
+    if (driverTripSession?.status === 'active') return 'Trip In Progress';
+    if (driverTripSession?.status === 'stopped') return 'Stop Timer Running';
+    if (driverTripSession?.status === 'delivered_pending_approval') return 'Delivery Submitted';
+    if (isWithinStartRange) return 'Vehicle Matched';
+    return 'Awaiting Assignment';
+  }, [driverTripSession?.status, isWithinStartRange]);
+
+  const driverTripSubtitle = useMemo(() => {
+    if (driverTripSession?.status === 'active') return 'Drive timer is active. Stop only when parked safely.';
+    if (driverTripSession?.status === 'stopped') return 'If stopping for more than 2 minutes, shut off the engine.';
+    if (driverTripSession?.status === 'delivered_pending_approval') return 'Management must approve this delivery before it is closed.';
+    if (isWithinStartRange) return 'You are close enough to your assigned truck. Start when ready.';
+    if (!hasLivePair) return 'Waiting for phone GPS and Navixy tracker location.';
+    return 'Move closer to your assigned truck to start the trip.';
+  }, [driverTripSession?.status, hasLivePair, isWithinStartRange]);
+
+  const logTripEvent = (eventType: 'start' | 'stop' | 'resume' | 'delivered_pending_approval', session: any) => {
+    if (!session) return;
+    void logDriverTripEvent({
+      eventType,
+      sessionId: session.id,
+      driverId: session.driver_id,
+      driverName: session.driver_name,
+      trackerName: session.tracker_name,
+      driverLat: tracking.driverLat,
+      driverLng: tracking.driverLng,
+      truckLat: tracking.truckLat,
+      truckLng: tracking.truckLng,
+      truckSpeed: tracking.truckSpeed,
+      totalActiveSeconds: session.totalActiveSeconds,
+      totalStoppedSeconds: session.totalStoppedSeconds,
+    });
+  };
+
+  const handleStartDriverTrip = () => {
+    if (!isWithinStartRange) {
+      handleTruckPress();
+      return;
+    }
+    const session = startDriverTrip();
+    logTripEvent('start', session);
+  };
+
+  const handleStopDriverTrip = () => {
+    const session = stopDriverTrip();
+    logTripEvent('stop', session);
+  };
+
+  const handleResumeDriverTrip = () => {
+    const session = resumeDriverTrip();
+    logTripEvent('resume', session);
+  };
+
+  const handleDeliveredRequest = () => {
+    const session = markDriverDelivered();
+    logTripEvent('delivered_pending_approval', session);
+  };
 
   // Bottom sheet animation
   const sheetHeight = useRef(new Animated.Value(COLLAPSED_HEIGHT)).current;
@@ -228,6 +343,61 @@ export const HomeDashboard = ({ navigation }: any) => {
     }
   };
 
+  const renderDriverTripActions = () => {
+    if (driverTripSession?.status === 'delivered_pending_approval') {
+      return (
+        <View style={styles.approvalBanner}>
+          <View style={styles.checkStatusDot} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.approvalTitle}>Waiting for management approval</Text>
+            <Text style={styles.approvalText}>Delivery timestamp has been captured locally.</Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (driverTripSession?.status === 'active') {
+      return (
+        <View style={styles.tripActionStack}>
+          <TouchableOpacity style={[styles.tripActionBtn, styles.tripStopBtn]} onPress={handleStopDriverTrip} activeOpacity={0.85}>
+            <Text style={styles.tripStopBtnText}>Stop Trip</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tripActionBtn, styles.tripSecondaryBtn]} onPress={handleDeliveredRequest} activeOpacity={0.85}>
+            <Text style={styles.tripSecondaryBtnText}>Mark Delivered</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (driverTripSession?.status === 'stopped') {
+      return (
+        <View style={styles.tripActionStack}>
+          <TouchableOpacity style={[styles.tripActionBtn, styles.tripStartBtn]} onPress={handleResumeDriverTrip} activeOpacity={0.85}>
+            <Text style={styles.tripStartBtnText}>Resume Trip</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tripActionBtn, styles.tripSecondaryBtn]} onPress={handleDeliveredRequest} activeOpacity={0.85}>
+            <Text style={styles.tripSecondaryBtnText}>Mark Delivered</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (isWithinStartRange) {
+      return (
+        <TouchableOpacity style={[styles.tripActionBtn, styles.tripStartBtn]} onPress={handleStartDriverTrip} activeOpacity={0.85}>
+          <Text style={styles.tripStartBtnText}>Start Trip</Text>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <TouchableOpacity style={styles.vehicleActionBtn} onPress={handleTruckPress} activeOpacity={0.85}>
+        <Truck size={18} color={theme.colors.primary} />
+        <Text style={styles.vehicleActionBtnText}>View My Vehicle</Text>
+      </TouchableOpacity>
+    );
+  };
+
   const arrowRotateInterpolation = arrowRotation.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '180deg'],
@@ -255,6 +425,7 @@ export const HomeDashboard = ({ navigation }: any) => {
         {/* Driver Marker */}
         {tracking.driverLat && tracking.driverLng && (
           <Marker
+            identifier="driver-location"
             coordinate={{ latitude: tracking.driverLat, longitude: tracking.driverLng }}
             title={user?.name || 'You'}
             description="Your current location"
@@ -269,7 +440,10 @@ export const HomeDashboard = ({ navigation }: any) => {
         {/* Truck Marker */}
         {tracking.truckLat && tracking.truckLng && (
           <Marker
+            identifier="assigned-truck"
             coordinate={{ latitude: tracking.truckLat, longitude: tracking.truckLng }}
+            title={user?.tracker_name || 'Assigned Truck'}
+            description="Your assigned vehicle"
             onPress={handleTruckPress}
             anchor={{ x: 0.5, y: 0.5 }}
             zIndex={3}
@@ -296,6 +470,7 @@ export const HomeDashboard = ({ navigation }: any) => {
         {/* Distance Label at midpoint */}
         {isTruckSelected && midPoint && distanceKm !== null && (
           <Marker
+            identifier="driver-truck-distance"
             coordinate={midPoint}
             anchor={{ x: 0.5, y: 0.5 }}
             zIndex={10}
@@ -423,10 +598,35 @@ export const HomeDashboard = ({ navigation }: any) => {
                   <Activity size={20} color={theme.colors.primary} />
                 </View>
                 <View style={styles.statusTextWrap}>
-                  <Text style={styles.sheetTitle}>Awaiting Assignment</Text>
-                  <Text style={styles.sheetSubtitle}>Your vehicle is online and available for dispatch.</Text>
+                  <Text style={styles.sheetTitle}>{driverTripTitle}</Text>
+                  <Text style={styles.sheetSubtitle}>{driverTripSubtitle}</Text>
                 </View>
               </View>
+
+              {(driverTripSession?.status === 'active' || driverTripSession?.status === 'stopped' || driverTripSession?.status === 'delivered_pending_approval') && (
+                <View style={styles.timerStrip}>
+                  <View style={styles.timerItem}>
+                    <Text style={styles.timerLabel}>Drive Timer</Text>
+                    <Text style={styles.timerValue}>{formatTimer(activeSeconds)}</Text>
+                  </View>
+                  <View style={styles.timerDivider} />
+                  <View style={styles.timerItem}>
+                    <Text style={styles.timerLabel}>Stop Timer</Text>
+                    <Text style={[styles.timerValue, driverTripSession?.status === 'stopped' && stoppedSeconds >= ENGINE_IDLE_WARNING_SECONDS && styles.timerWarning]}>
+                      {formatTimer(stoppedSeconds)}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {driverTripSession?.status === 'stopped' && (
+                <View style={styles.engineDisclaimer}>
+                  <AlertTriangle size={16} color="#B45309" />
+                  <Text style={styles.engineDisclaimerText}>
+                    If stopping for more than 2 minutes, please shut off the engine.
+                  </Text>
+                </View>
+              )}
               
               {expanded && (
                 <ScrollView 
@@ -439,8 +639,8 @@ export const HomeDashboard = ({ navigation }: any) => {
                   <View style={styles.telemetryRow}>
                     <View style={styles.telemetryItem}>
                       <Clock size={16} color={theme.colors.primary} />
-                      <Text style={styles.telemetryLabel}>Active Time</Text>
-                      <Text style={styles.telemetryValue}>{tripStats.loading ? '...' : `${tripStats.activeHours}h`}</Text>
+                      <Text style={styles.telemetryLabel}>Drive Timer</Text>
+                      <Text style={styles.telemetryValue}>{formatTimer(activeSeconds)}</Text>
                       <Text style={styles.telemetrySub}>This Shift</Text>
                     </View>
                     <View style={styles.telemetryItem}>
@@ -479,8 +679,12 @@ export const HomeDashboard = ({ navigation }: any) => {
                       </View>
                       <View>
                         <Text style={styles.proximityLabel}>Proximity Alert</Text>
-                        <Text style={[styles.proximityValue, { color: '#4CAF50' }]}>Nearby</Text>
-                        <Text style={styles.proximitySub}>1 vehicle nearby</Text>
+                        <Text style={[styles.proximityValue, { color: isWithinStartRange ? '#4CAF50' : '#FF9800' }]}>
+                          {isWithinStartRange ? 'Ready' : 'Not Ready'}
+                        </Text>
+                        <Text style={styles.proximitySub}>
+                          {isWithinStartRange ? 'Start enabled' : `Within ${Math.round(PROXIMITY_START_KM * 1000)} m required`}
+                        </Text>
                       </View>
                     </View>
                   </View>
@@ -502,9 +706,9 @@ export const HomeDashboard = ({ navigation }: any) => {
                         <Clock size={18} color="#FF9800" />
                       </View>
                       <View>
-                        <Text style={styles.kpiLabel}>Idle Time</Text>
-                        <Text style={styles.kpiValue}>35 min</Text>
-                        <Text style={styles.kpiSub}>Today</Text>
+                        <Text style={styles.kpiLabel}>Stop Timer</Text>
+                        <Text style={styles.kpiValue}>{formatTimer(stoppedSeconds)}</Text>
+                        <Text style={styles.kpiSub}>Current Trip</Text>
                       </View>
                     </View>
                     <View style={styles.kpiCard}>
@@ -529,19 +733,12 @@ export const HomeDashboard = ({ navigation }: any) => {
                     </View>
                   </View>
 
-                  {/* Action Button */}
-                  <TouchableOpacity style={styles.vehicleActionBtn} onPress={() => {}} activeOpacity={0.85}>
-                    <Truck size={18} color={theme.colors.primary} />
-                    <Text style={styles.vehicleActionBtnText}>View My Vehicle</Text>
-                  </TouchableOpacity>
+                  {renderDriverTripActions()}
                 </ScrollView>
               )}
 
               {!expanded && (
-                <TouchableOpacity style={styles.vehicleActionBtn} onPress={() => {}} activeOpacity={0.85}>
-                  <Truck size={18} color={theme.colors.primary} />
-                  <Text style={styles.vehicleActionBtnText}>View My Vehicle</Text>
-                </TouchableOpacity>
+                renderDriverTripActions()
               )}
             </View>
           ) : (
@@ -895,6 +1092,123 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: theme.colors.primary,
+  },
+  timerStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111827',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  timerItem: {
+    flex: 1,
+  },
+  timerLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.68)',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  timerValue: {
+    fontSize: 20,
+    color: theme.colors.white,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  timerWarning: {
+    color: '#F59E0B',
+  },
+  timerDivider: {
+    width: 1,
+    height: 34,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    marginHorizontal: 12,
+  },
+  engineDisclaimer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+  },
+  engineDisclaimerText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#92400E',
+    fontWeight: '700',
+    lineHeight: 17,
+  },
+  tripActionStack: {
+    gap: 10,
+  },
+  tripActionBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  tripStartBtn: {
+    backgroundColor: theme.colors.primary,
+  },
+  tripStartBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: theme.colors.white,
+  },
+  tripStopBtn: {
+    backgroundColor: '#111827',
+  },
+  tripStopBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: theme.colors.white,
+  },
+  tripSecondaryBtn: {
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.white,
+  },
+  tripSecondaryBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: theme.colors.primary,
+  },
+  approvalBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 8,
+  },
+  checkStatusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#10B981',
+  },
+  approvalTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#065F46',
+  },
+  approvalText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#047857',
+    marginTop: 2,
   },
   statsRow: {
     flexDirection: 'row',
