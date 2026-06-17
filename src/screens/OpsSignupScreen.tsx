@@ -4,6 +4,8 @@ import {
   Text, 
   StyleSheet, 
   SafeAreaView, 
+  TouchableWithoutFeedback, 
+  Keyboard, 
   KeyboardAvoidingView, 
   Platform, 
   Alert, 
@@ -11,56 +13,45 @@ import {
   TouchableOpacity, 
   ScrollView, 
   Animated,
-  TextInput,
-  Keyboard
+  TextInput
 } from 'react-native';
 import { theme } from '../theme/theme';
 import { X } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import { getDeviceModel, getAppVersion, getTimezone, getLocale, getGPSLocation } from '../utils/deviceInfo';
 
-export const DriverSignInScreen = ({ navigation }: any) => {
+export const OpsSignupScreen = ({ navigation }: any) => {
   const [step, setStep] = useState(1);
+  const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [trackerName, setTrackerName] = useState('');
+  const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const login = useStore((state) => state.login);
+  const login = useStore(state => state.login);
 
-  // Focus states
+  // Focus states for text inputs
+  const [isNameFocused, setIsNameFocused] = useState(false);
   const [isPhoneFocused, setIsPhoneFocused] = useState(false);
-  const [isTrackerFocused, setIsTrackerFocused] = useState(false);
+  const [isEmailFocused, setIsEmailFocused] = useState(false);
 
-  // Animated values
+  // Animated values for progressive steps
   const step2Opacity = useRef(new Animated.Value(0)).current;
   const step2Height = useRef(new Animated.Value(0)).current;
+  const step3Opacity = useRef(new Animated.Value(0)).current;
+  const step3Height = useRef(new Animated.Value(0)).current;
+
   const scrollViewRef = useRef<ScrollView>(null);
 
   const handleBackPress = () => {
-    if (step === 2) {
-      setStep(1);
-      Animated.parallel([
-        Animated.timing(step2Height, {
-          toValue: 0,
-          duration: 350,
-          useNativeDriver: false,
-        }),
-        Animated.timing(step2Opacity, {
-          toValue: 0,
-          duration: 350,
-          useNativeDriver: false,
-        })
-      ]).start();
-    } else {
-      if (navigation.canGoBack?.()) {
-        navigation.goBack();
-      } else {
-        navigation.replace('IntentSelection');
-      }
+    if (navigation.canGoBack?.()) {
+      navigation.goBack();
+      return;
     }
+    navigation.replace('IntentSelection');
   };
 
   const goToStep2 = () => {
-    if (!phone.trim()) return;
+    if (!fullName.trim()) return;
     setStep(2);
     Animated.parallel([
       Animated.timing(step2Height, {
@@ -80,49 +71,128 @@ export const DriverSignInScreen = ({ navigation }: any) => {
     }, 100);
   };
 
-  const handleSignIn = async () => {
-    if (!phone.trim() || !trackerName.trim()) {
-      Alert.alert('Missing Fields', 'Please enter both your phone number and vehicle.');
+  const goToStep3 = () => {
+    if (!phone.trim()) return;
+    setStep(3);
+    Animated.parallel([
+      Animated.timing(step3Height, {
+        toValue: 120,
+        duration: 350,
+        useNativeDriver: false,
+      }),
+      Animated.timing(step3Opacity, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: false,
+      })
+    ]).start();
+
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
+  const handleSignup = async () => {
+    if (!fullName.trim() || !phone.trim() || !email.trim()) {
+      Alert.alert('Missing Fields', 'Please fill in all details.');
       return;
     }
 
-    Keyboard.dismiss();
     setIsLoading(true);
-
     const formattedPhone = phone.trim().startsWith('+') ? phone.trim() : `+${phone.trim()}`;
 
     try {
-      const { data, error } = await supabase
+      // 0a. Check if this phone number already has a request
+      const { data: phoneExists } = await supabase
         .from('profiles')
         .select('*')
         .eq('phone_number', formattedPhone)
-        .eq('tracker_name', trackerName.trim().toUpperCase())
+        .maybeSingle();
+
+      if (phoneExists) {
+        setIsLoading(false);
+        Alert.alert(
+          'Account Request Found',
+          `A request with this phone number already exists (Status: ${phoneExists.approval_status}).`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'OK',
+              onPress: () => {
+                login(phoneExists);
+                if (phoneExists.approval_status === 'APPROVED') {
+                  navigation.replace('OperationsFlow');
+                } else {
+                  navigation.replace('ApprovalPending');
+                }
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      // 1. Gather Telemetry Data
+      let current_latitude = null;
+      let current_longitude = null;
+      
+      try {
+        const coords = await getGPSLocation();
+        if (coords) {
+          current_latitude = coords.latitude;
+          current_longitude = coords.longitude;
+        }
+      } catch (locErr) {
+        console.log('Location error:', locErr);
+      }
+
+      const telemetryData = {
+        device_platform: Platform.OS,
+        device_model: getDeviceModel(),
+        app_version: getAppVersion(),
+        timezone: getTimezone(),
+        locale: getLocale(),
+      };
+
+      // 2. Push to Supabase 'profiles' table with role 'OPERATOR'
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert([{
+          full_name: fullName.trim(),
+          phone_number: formattedPhone,
+          email: email.trim(),
+          role: 'OPERATOR',
+          approval_status: 'PENDING',
+          ...telemetryData,
+          current_latitude,
+          current_longitude,
+          registration_timestamp: new Date().toISOString(),
+        }])
+        .select()
         .single();
 
-      if (error || !data) {
-        throw new Error('No driver found with this phone number and vehicle combination.');
+      if (error) {
+        throw error;
       }
 
-      // Save to store
+      // 3. Save to local state
       login(data);
 
-      // Navigate based on approval status
-      if (data.approval_status === 'APPROVED') {
-        navigation.replace('Main');
-      } else {
-        navigation.replace('ApprovalPending');
-      }
+      // 4. Navigate to Pending Approval Screen
+      navigation.replace('ApprovalPending');
 
     } catch (error: any) {
       console.error(error);
-      Alert.alert('Sign In Failed', error.message || 'Could not find your profile.');
+      Alert.alert('Request Error', error.message || 'Could not submit access request.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const isStep1Active = phone.trim().length > 0;
-  const isStep2Active = trackerName.trim().length > 0;
+  const isButtonActive = 
+    step === 1 ? fullName.trim().length > 0 :
+    step === 2 ? phone.trim().length > 0 :
+    email.trim().length > 0;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -150,38 +220,34 @@ export const DriverSignInScreen = ({ navigation }: any) => {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.heroContent}>
-              <Text style={styles.heroTitle}>Drivers Hub</Text>
+              <Text style={styles.heroTitle}>Live Operations</Text>
               <Text style={styles.heroTagline}>
-                For drivers to manage{"\n"}trips, tasks and updates.
-              </Text>
-              <Text style={styles.heroDesc}>
-                Access your trips, update task status, and stay informed — all in one place. Let’s get you signed in.
+                For on-ground staff to{"\n"}monitor and manage operations.
               </Text>
               <Text style={styles.extraLabel}>
-                Enter your details to sign in to the{"\n"}ASAS Drivers Hub.
+                Enter your details to request access{"\n"}to the ASAS Live Operations platform.
               </Text>
             </View>
 
             <View style={styles.formContainer}>
-              {/* Step 1: Phone Number */}
+              {/* Step 1: Full Name */}
               <View style={styles.fieldContainer}>
-                <Text style={styles.inputLabel}>Please enter your phone number -</Text>
+                <Text style={styles.inputLabel}>Can we have your Full Name ?</Text>
                 <TextInput
                   style={[
                     styles.textInput,
-                    isPhoneFocused && styles.textInputActive
+                    isNameFocused && styles.textInputActive
                   ]}
-                  placeholder="Enter your phone number"
+                  placeholder="Enter your full name"
                   placeholderTextColor="#A9A9A9"
-                  keyboardType="phone-pad"
-                  value={phone}
-                  onChangeText={setPhone}
-                  onFocus={() => setIsPhoneFocused(true)}
-                  onBlur={() => setIsPhoneFocused(false)}
+                  value={fullName}
+                  onChangeText={setFullName}
+                  onFocus={() => setIsNameFocused(true)}
+                  onBlur={() => setIsNameFocused(false)}
                 />
               </View>
 
-              {/* Step 2: Vehicle Type */}
+              {/* Step 2: Phone Number */}
               <Animated.View style={[
                 styles.animatedFieldContainer,
                 {
@@ -191,19 +257,47 @@ export const DriverSignInScreen = ({ navigation }: any) => {
                 }
               ]}>
                 <View style={styles.fieldContainer}>
-                  <Text style={styles.inputLabel}>What vehicle are you driving?</Text>
+                  <Text style={styles.inputLabel}>Please enter your phone number -</Text>
                   <TextInput
                     style={[
                       styles.textInput,
-                      isTrackerFocused && styles.textInputActive
+                      isPhoneFocused && styles.textInputActive
                     ]}
-                    placeholder="Enter your vehicle type"
+                    placeholder="Enter your phone number"
                     placeholderTextColor="#A9A9A9"
-                    autoCapitalize="characters"
-                    value={trackerName}
-                    onChangeText={setTrackerName}
-                    onFocus={() => setIsTrackerFocused(true)}
-                    onBlur={() => setIsTrackerFocused(false)}
+                    keyboardType="phone-pad"
+                    value={phone}
+                    onChangeText={setPhone}
+                    onFocus={() => setIsPhoneFocused(true)}
+                    onBlur={() => setIsPhoneFocused(false)}
+                  />
+                </View>
+              </Animated.View>
+
+              {/* Step 3: Email Address */}
+              <Animated.View style={[
+                styles.animatedFieldContainer,
+                {
+                  opacity: step3Opacity,
+                  maxHeight: step3Height,
+                  overflow: 'hidden',
+                }
+              ]}>
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.inputLabel}>Please enter your email address -</Text>
+                  <TextInput
+                    style={[
+                      styles.textInput,
+                      isEmailFocused && styles.textInputActive
+                    ]}
+                    placeholder="Enter your email address"
+                    placeholderTextColor="#A9A9A9"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={email}
+                    onChangeText={setEmail}
+                    onFocus={() => setIsEmailFocused(true)}
+                    onBlur={() => setIsEmailFocused(false)}
                   />
                 </View>
               </Animated.View>
@@ -216,23 +310,23 @@ export const DriverSignInScreen = ({ navigation }: any) => {
                   </View>
                 ) : (
                   <TouchableOpacity
-                    onPress={step === 1 ? goToStep2 : handleSignIn}
-                    disabled={step === 1 ? !isStep1Active : !isStep2Active}
+                    onPress={
+                      step === 1 ? goToStep2 :
+                      step === 2 ? goToStep3 :
+                      handleSignup
+                    }
+                    disabled={!isButtonActive}
                     activeOpacity={0.8}
                     style={[
                       styles.proceedButton,
-                      step === 1 
-                        ? (isStep1Active ? styles.buttonColorlessActive : styles.proceedButtonDisabled)
-                        : (isStep2Active ? styles.buttonRedActive : styles.proceedButtonDisabled)
+                      !isButtonActive && styles.proceedButtonDisabled
                     ]}
                   >
                     <Text style={[
                       styles.proceedButtonText,
-                      step === 1
-                        ? (isStep1Active ? styles.buttonColorlessActiveText : styles.proceedButtonTextDisabled)
-                        : (isStep2Active ? styles.buttonRedActiveText : styles.proceedButtonTextDisabled)
+                      !isButtonActive && styles.proceedButtonTextDisabled
                     ]}>
-                      {step === 1 ? 'Proceed' : 'Sign In'}
+                      {step === 3 ? 'Request Access' : 'Proceed'}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -352,6 +446,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   proceedButton: {
+    backgroundColor: theme.colors.primary,
     borderRadius: 28,
     height: 56,
     justifyContent: 'center',
@@ -359,6 +454,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   proceedButtonText: {
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
   },
@@ -367,17 +463,5 @@ const styles = StyleSheet.create({
   },
   proceedButtonTextDisabled: {
     color: '#A8A8A8',
-  },
-  buttonColorlessActive: {
-    backgroundColor: '#1A1A1A',
-  },
-  buttonColorlessActiveText: {
-    color: '#FFFFFF',
-  },
-  buttonRedActive: {
-    backgroundColor: theme.colors.primary,
-  },
-  buttonRedActiveText: {
-    color: '#FFFFFF',
   },
 });

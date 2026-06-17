@@ -1,66 +1,61 @@
 import React, { useState, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  SafeAreaView, 
-  KeyboardAvoidingView, 
-  Platform, 
-  Alert, 
-  ActivityIndicator, 
-  TouchableOpacity, 
-  ScrollView, 
-  Animated,
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
+  Platform,
+  ScrollView,
   TextInput,
-  Keyboard
+  KeyboardAvoidingView,
+  Animated,
+  Alert
 } from 'react-native';
 import { theme } from '../theme/theme';
 import { X } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
-import { useStore } from '../store/useStore';
 
-export const DriverSignInScreen = ({ navigation }: any) => {
+export const ManagementIntroScreen = ({ navigation }: any) => {
+  const [isLoginActive, setIsLoginActive] = useState(false);
   const [step, setStep] = useState(1);
-  const [phone, setPhone] = useState('');
-  const [trackerName, setTrackerName] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const login = useStore((state) => state.login);
+  const [username, setUsername] = useState('');
+  const [passcode, setPasscode] = useState('');
 
-  // Focus states
-  const [isPhoneFocused, setIsPhoneFocused] = useState(false);
-  const [isTrackerFocused, setIsTrackerFocused] = useState(false);
+  const [isUsernameFocused, setIsUsernameFocused] = useState(false);
+  const [isPasscodeFocused, setIsPasscodeFocused] = useState(false);
 
-  // Animated values
   const step2Opacity = useRef(new Animated.Value(0)).current;
   const step2Height = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
 
   const handleBackPress = () => {
-    if (step === 2) {
-      setStep(1);
-      Animated.parallel([
-        Animated.timing(step2Height, {
-          toValue: 0,
-          duration: 350,
-          useNativeDriver: false,
-        }),
-        Animated.timing(step2Opacity, {
-          toValue: 0,
-          duration: 350,
-          useNativeDriver: false,
-        })
-      ]).start();
-    } else {
-      if (navigation.canGoBack?.()) {
-        navigation.goBack();
+    if (isLoginActive) {
+      if (step === 2) {
+        setStep(1);
+        Animated.parallel([
+          Animated.timing(step2Height, {
+            toValue: 0,
+            duration: 350,
+            useNativeDriver: false,
+          }),
+          Animated.timing(step2Opacity, {
+            toValue: 0,
+            duration: 350,
+            useNativeDriver: false,
+          })
+        ]).start();
       } else {
-        navigation.replace('IntentSelection');
+        setIsLoginActive(false);
+        setUsername('');
+        setPasscode('');
       }
+    } else {
+      navigation.goBack();
     }
   };
 
   const goToStep2 = () => {
-    if (!phone.trim()) return;
+    if (!username.trim()) return;
     setStep(2);
     Animated.parallel([
       Animated.timing(step2Height, {
@@ -80,49 +75,21 @@ export const DriverSignInScreen = ({ navigation }: any) => {
     }, 100);
   };
 
-  const handleSignIn = async () => {
-    if (!phone.trim() || !trackerName.trim()) {
-      Alert.alert('Missing Fields', 'Please enter both your phone number and vehicle.');
+  const handleLoginSubmit = () => {
+    if (!username.trim() || !passcode.trim()) {
+      Alert.alert('Missing Fields', 'Please enter your username and passcode.');
       return;
     }
 
-    Keyboard.dismiss();
-    setIsLoading(true);
-
-    const formattedPhone = phone.trim().startsWith('+') ? phone.trim() : `+${phone.trim()}`;
-
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('phone_number', formattedPhone)
-        .eq('tracker_name', trackerName.trim().toUpperCase())
-        .single();
-
-      if (error || !data) {
-        throw new Error('No driver found with this phone number and vehicle combination.');
-      }
-
-      // Save to store
-      login(data);
-
-      // Navigate based on approval status
-      if (data.approval_status === 'APPROVED') {
-        navigation.replace('Main');
-      } else {
-        navigation.replace('ApprovalPending');
-      }
-
-    } catch (error: any) {
-      console.error(error);
-      Alert.alert('Sign In Failed', error.message || 'Could not find your profile.');
-    } finally {
-      setIsLoading(false);
+    if (username.trim() === 'asas.team' && passcode === 'admin@1901') {
+      navigation.replace('ManagementFlow');
+    } else {
+      Alert.alert('Login Failed', 'Invalid username or passcode.');
     }
   };
 
-  const isStep1Active = phone.trim().length > 0;
-  const isStep2Active = trackerName.trim().length > 0;
+  const isStep1Active = username.trim().length > 0;
+  const isStep2Active = passcode.trim().length > 0;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -149,74 +116,79 @@ export const DriverSignInScreen = ({ navigation }: any) => {
             contentContainerStyle={styles.scrollContainer}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.heroContent}>
-              <Text style={styles.heroTitle}>Drivers Hub</Text>
+            <View style={[styles.heroContent, isLoginActive && styles.heroContentActive]}>
+              <Text style={styles.heroTitle}>Management Console</Text>
               <Text style={styles.heroTagline}>
-                For drivers to manage{"\n"}trips, tasks and updates.
+                For stakeholders to analyze and{"\n"}monitor their fleet on the go.
               </Text>
-              <Text style={styles.heroDesc}>
-                Access your trips, update task status, and stay informed — all in one place. Let’s get you signed in.
-              </Text>
-              <Text style={styles.extraLabel}>
-                Enter your details to sign in to the{"\n"}ASAS Drivers Hub.
-              </Text>
+              {!isLoginActive && (
+                <Text style={styles.heroDesc}>
+                  Access insights, monitor performance, and make data-driven decisions — all in one place. Let’s get you started.
+                </Text>
+              )}
             </View>
 
-            <View style={styles.formContainer}>
-              {/* Step 1: Phone Number */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.inputLabel}>Please enter your phone number -</Text>
-                <TextInput
-                  style={[
-                    styles.textInput,
-                    isPhoneFocused && styles.textInputActive
-                  ]}
-                  placeholder="Enter your phone number"
-                  placeholderTextColor="#A9A9A9"
-                  keyboardType="phone-pad"
-                  value={phone}
-                  onChangeText={setPhone}
-                  onFocus={() => setIsPhoneFocused(true)}
-                  onBlur={() => setIsPhoneFocused(false)}
-                />
+            {!isLoginActive ? (
+              <View style={styles.optionsContainer}>
+                <TouchableOpacity
+                  onPress={() => setIsLoginActive(true)}
+                  activeOpacity={0.8}
+                  style={styles.optionCard}
+                >
+                  <Text style={styles.cardText}>Sign in to Management Console</Text>
+                </TouchableOpacity>
               </View>
-
-              {/* Step 2: Vehicle Type */}
-              <Animated.View style={[
-                styles.animatedFieldContainer,
-                {
-                  opacity: step2Opacity,
-                  maxHeight: step2Height,
-                  overflow: 'hidden',
-                }
-              ]}>
+            ) : (
+              <View style={styles.formContainer}>
+                {/* Step 1: Username */}
                 <View style={styles.fieldContainer}>
-                  <Text style={styles.inputLabel}>What vehicle are you driving?</Text>
+                  <Text style={styles.inputLabel}>Enter your designated username</Text>
                   <TextInput
                     style={[
                       styles.textInput,
-                      isTrackerFocused && styles.textInputActive
+                      isUsernameFocused && styles.textInputActive
                     ]}
-                    placeholder="Enter your vehicle type"
+                    placeholder="Enter username"
                     placeholderTextColor="#A9A9A9"
-                    autoCapitalize="characters"
-                    value={trackerName}
-                    onChangeText={setTrackerName}
-                    onFocus={() => setIsTrackerFocused(true)}
-                    onBlur={() => setIsTrackerFocused(false)}
+                    autoCapitalize="none"
+                    value={username}
+                    onChangeText={setUsername}
+                    onFocus={() => setIsUsernameFocused(true)}
+                    onBlur={() => setIsUsernameFocused(false)}
                   />
                 </View>
-              </Animated.View>
 
-              {/* Button Container */}
-              <View style={styles.buttonContainer}>
-                {isLoading ? (
-                  <View style={styles.proceedButton}>
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                {/* Step 2: Passcode */}
+                <Animated.View style={[
+                  styles.animatedFieldContainer,
+                  {
+                    opacity: step2Opacity,
+                    maxHeight: step2Height,
+                    overflow: 'hidden',
+                  }
+                ]}>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.inputLabel}>Enter passcode -</Text>
+                    <TextInput
+                      style={[
+                        styles.textInput,
+                        isPasscodeFocused && styles.textInputActive
+                      ]}
+                      placeholder="Enter passcode"
+                      placeholderTextColor="#A9A9A9"
+                      secureTextEntry
+                      value={passcode}
+                      onChangeText={setPasscode}
+                      onFocus={() => setIsPasscodeFocused(true)}
+                      onBlur={() => setIsPasscodeFocused(false)}
+                    />
                   </View>
-                ) : (
+                </Animated.View>
+
+                {/* Button Container */}
+                <View style={styles.buttonContainer}>
                   <TouchableOpacity
-                    onPress={step === 1 ? goToStep2 : handleSignIn}
+                    onPress={step === 1 ? goToStep2 : handleLoginSubmit}
                     disabled={step === 1 ? !isStep1Active : !isStep2Active}
                     activeOpacity={0.8}
                     style={[
@@ -232,12 +204,12 @@ export const DriverSignInScreen = ({ navigation }: any) => {
                         ? (isStep1Active ? styles.buttonColorlessActiveText : styles.proceedButtonTextDisabled)
                         : (isStep2Active ? styles.buttonRedActiveText : styles.proceedButtonTextDisabled)
                     ]}>
-                      {step === 1 ? 'Proceed' : 'Sign In'}
+                      {step === 1 ? 'Proceed' : 'Sign in to Management Console'}
                     </Text>
                   </TouchableOpacity>
-                )}
+                </View>
               </View>
-            </View>
+            )}
           </ScrollView>
         </KeyboardAvoidingView>
       </View>
@@ -283,7 +255,10 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   heroContent: {
-    marginBottom: 32,
+    marginBottom: 40,
+  },
+  heroContentActive: {
+    marginBottom: 20,
   },
   heroTitle: {
     fontFamily: playfairBold,
@@ -308,13 +283,33 @@ const styles = StyleSheet.create({
     color: '#4A4A4A',
     lineHeight: 26,
     fontWeight: '400',
-    marginBottom: 28,
   },
-  extraLabel: {
+  optionsContainer: {
+    gap: 16,
+    width: '100%',
+  },
+  optionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#D6D6D6',
+    paddingVertical: 22,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardText: {
+    fontFamily: playfairBold,
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '900',
     color: '#000000',
-    lineHeight: 24,
+    textAlign: 'center',
   },
   formContainer: {
     width: '100%',

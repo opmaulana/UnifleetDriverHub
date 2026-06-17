@@ -53,6 +53,52 @@ interface AppState {
   notifications: any[];
   language: 'en' | 'sw';
   
+  introTruckX: number;
+  introTruckY: number;
+  introTruckScale: number;
+  setIntroTruckX: (x: number) => void;
+  setIntroTruckY: (y: number) => void;
+  setIntroTruckScale: (s: number) => void;
+  introTextY: number;
+  introTextX: number;
+  introTextScale: number;
+  setIntroTextX: (x: number) => void;
+  setIntroTextY: (y: number) => void;
+  setIntroTextScale: (s: number) => void;
+  introTextLineSpacing: number;
+  introBtnX: number;
+  introTextYScreen2: number;
+  introS2TextX: number;
+  introS2TextY: number;
+  introS2TextScale: number;
+  setIntroS2TextX: (x: number) => void;
+  setIntroS2TextY: (y: number) => void;
+  setIntroS2TextScale: (s: number) => void;
+  introPointsX: number;
+  introPointsY: number;
+  introPointsScale: number;
+  setIntroPointsX: (x: number) => void;
+  setIntroPointsY: (y: number) => void;
+  setIntroPointsScale: (s: number) => void;
+  introFooterX: number;
+  introFooterY: number;
+  introFooterScale: number;
+  setIntroFooterX: (x: number) => void;
+  setIntroFooterY: (y: number) => void;
+  setIntroFooterScale: (s: number) => void;
+  introS3TextX: number;
+  introS3TextY: number;
+  introS3TextScale: number;
+  setIntroS3TextX: (x: number) => void;
+  setIntroS3TextY: (y: number) => void;
+  setIntroS3TextScale: (s: number) => void;
+  introS3FooterX: number;
+  introS3FooterY: number;
+  introS3FooterScale: number;
+  setIntroS3FooterX: (x: number) => void;
+  setIntroS3FooterY: (y: number) => void;
+  setIntroS3FooterScale: (s: number) => void;
+
   // Actions
   login: (profile: any) => void;
   logout: () => void;
@@ -77,19 +123,64 @@ export const useStore = create<AppState>()(
       user: null,
       activeTrip: null,
       driverTripSession: null,
-  trips: [
-    {
-      id: '1',
-      status: 'pending',
-      pickup: 'Terminal 1, JKIA',
-      dropoff: 'Westlands, Nairobi',
-      estimatedEarnings: 'KES 2,400',
-      distance: '18.5 km',
-      time: '35 min',
-    }
-  ],
-  notifications: [],
-  language: 'en',
+      trips: [
+        {
+          id: '1',
+          status: 'pending',
+          pickup: 'Terminal 1, JKIA',
+          dropoff: 'Westlands, Nairobi',
+          estimatedEarnings: 'KES 2,400',
+          distance: '18.5 km',
+          time: '35 min',
+        }
+      ],
+      notifications: [],
+      language: 'en',
+      introTruckX: -137,
+      introTruckY: 133,
+      introTruckScale: 1.80,
+      setIntroTruckX: (x) => set({ introTruckX: x }),
+      setIntroTruckY: (y) => set({ introTruckY: y }),
+      setIntroTruckScale: (s) => set({ introTruckScale: s }),
+      introTextY: 141,
+      introTextX: -96,
+      introTextScale: 0.85,
+      setIntroTextX: (x) => set({ introTextX: x }),
+      setIntroTextY: (y) => set({ introTextY: y }),
+      setIntroTextScale: (s) => set({ introTextScale: s }),
+      introTextLineSpacing: -4,
+      introBtnX: -5,
+      introTextYScreen2: 136,
+      introS2TextX: -90,
+      introS2TextY: 136,
+      introS2TextScale: 0.95,
+      setIntroS2TextX: (x) => set({ introS2TextX: x }),
+      setIntroS2TextY: (y) => set({ introS2TextY: y }),
+      setIntroS2TextScale: (s) => set({ introS2TextScale: s }),
+      introPointsX: -41,
+      introPointsY: 70,
+      introPointsScale: 0.80,
+      setIntroPointsX: (x) => set({ introPointsX: x }),
+      setIntroPointsY: (y) => set({ introPointsY: y }),
+      setIntroPointsScale: (s) => set({ introPointsScale: s }),
+      introFooterX: -92,
+      introFooterY: -14,
+      introFooterScale: 0.55,
+      setIntroFooterX: (x) => set({ introFooterX: x }),
+      setIntroFooterY: (y) => set({ introFooterY: y }),
+      setIntroFooterScale: (s) => set({ introFooterScale: s }),
+      introS3TextX: -55,
+      introS3TextY: 267,
+      introS3TextScale: 0.70,
+      setIntroS3TextX: (x) => set({ introS3TextX: x }),
+      setIntroS3TextY: (y) => set({ introS3TextY: y }),
+      setIntroS3TextScale: (s) => set({ introS3TextScale: s }),
+      introS3FooterX: -11,
+      introS3FooterY: -1,
+      introS3FooterScale: 0.95,
+      setIntroS3FooterX: (x) => set({ introS3FooterX: x }),
+      setIntroS3FooterY: (y) => set({ introS3FooterY: y }),
+      setIntroS3FooterScale: (s) => set({ introS3FooterScale: s }),
 
   login: (profile: any) => set({ 
     isAuthenticated: true, 

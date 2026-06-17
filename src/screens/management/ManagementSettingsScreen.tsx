@@ -156,6 +156,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   splashLogo: {
+    fontFamily: Platform.select({
+      web: 'Playfair Display',
+      default: 'PlayfairDisplay-Bold',
+    }),
     fontSize: 64,
     fontWeight: '900',
     color: theme.colors.primary,

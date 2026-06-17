@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Animated, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Animated, ActivityIndicator, Platform } from 'react-native';
 import { theme } from '../theme/theme';
 import { Button } from '../components/Button';
 import { supabase } from '../lib/supabase';
@@ -92,6 +92,10 @@ const styles = StyleSheet.create({
     marginBottom: 60,
   },
   splashLogo: {
+    fontFamily: Platform.select({
+      web: 'Playfair Display',
+      default: 'PlayfairDisplay-Bold',
+    }),
     fontSize: 56,
     fontWeight: '900',
     color: theme.colors.white,

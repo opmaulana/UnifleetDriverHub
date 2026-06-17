@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Platform, View, Text, StyleSheet, TouchableOpacity, ScrollView, useWindowDimensions, Linking } from 'react-native';
+import { Platform, View, Text, StyleSheet, TouchableOpacity, ScrollView, Linking } from 'react-native';
+import { useStore } from '../store/useStore';
 import { theme } from '../theme/theme';
 
 const ANDROID_DOWNLOAD_URL = '#'; // Replace with your APK download link
@@ -9,37 +10,40 @@ interface WebPhoneWrapperProps {
   children: React.ReactNode;
 }
 
-type PreviewMode = 'iphone' | 'iphone_large' | 'fullscreen';
+type PreviewMode = 'android_phone' | 'iphone' | 'iphone_large' | 'fullscreen';
 
 export const WebPhoneWrapper: React.FC<WebPhoneWrapperProps> = ({ children }) => {
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-
-  // If not web, scale the app content to 80% (0.8) to fit the phone screen
   if (Platform.OS !== 'web') {
-    const scale = 0.8;
-    const virtualWidth = windowWidth / scale;
-    const virtualHeight = windowHeight / scale;
-    
-    return (
-      <View style={{ flex: 1, backgroundColor: '#000000' }}>
-        <View style={{
-          position: 'absolute',
-          left: (windowWidth - virtualWidth) / 2,
-          top: (windowHeight - virtualHeight) / 2,
-          width: virtualWidth,
-          height: virtualHeight,
-          transform: [{ scale }],
-        }}>
-          {children}
-        </View>
-      </View>
-    );
+    return <View style={styles.nativeContainer}>{children}</View>;
   }
 
-  const [previewMode, setPreviewMode] = useState<PreviewMode>('iphone');
+  const [previewMode, setPreviewMode] = useState<PreviewMode>('android_phone');
   const [time, setTime] = useState('');
-  const zoomScale = 0.8;
   const [screenWidth, setScreenWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  const {
+    introTruckX, setIntroTruckX,
+    introTruckY, setIntroTruckY,
+    introTruckScale, setIntroTruckScale,
+    introTextX, setIntroTextX,
+    introTextY, setIntroTextY,
+    introTextScale, setIntroTextScale,
+    introFooterX, setIntroFooterX,
+    introFooterY, setIntroFooterY,
+    introFooterScale, setIntroFooterScale,
+    introS2TextX, setIntroS2TextX,
+    introS2TextY, setIntroS2TextY,
+    introS2TextScale, setIntroS2TextScale,
+    introPointsX, setIntroPointsX,
+    introPointsY, setIntroPointsY,
+    introPointsScale, setIntroPointsScale,
+    introS3TextX, setIntroS3TextX,
+    introS3TextY, setIntroS3TextY,
+    introS3TextScale, setIntroS3TextScale,
+    introS3FooterX, setIntroS3FooterX,
+    introS3FooterY, setIntroS3FooterY,
+    introS3FooterScale, setIntroS3FooterScale,
+  } = useStore();
 
   // Sync window resize
   useEffect(() => {
@@ -78,7 +82,7 @@ export const WebPhoneWrapper: React.FC<WebPhoneWrapperProps> = ({ children }) =>
         {screenWidth >= 500 && (
           <TouchableOpacity 
             style={styles.floatingToggleButton}
-            onPress={() => setPreviewMode('iphone')}
+            onPress={() => setPreviewMode('android_phone')}
           >
             <Text style={styles.floatingToggleText}>📱 Show Device Frame</Text>
           </TouchableOpacity>
@@ -89,9 +93,10 @@ export const WebPhoneWrapper: React.FC<WebPhoneWrapperProps> = ({ children }) =>
 
   // Get frame dimensions
   const dimensions = {
+    android_phone: { width: 411, height: 923 },
     iphone: { width: 390, height: 844 },
     iphone_large: { width: 428, height: 926 },
-  }[effectiveMode as 'iphone' | 'iphone_large'];
+  }[effectiveMode as 'android_phone' | 'iphone' | 'iphone_large'];
 
   const showSidePanel = screenWidth >= 850;
 
@@ -128,6 +133,15 @@ export const WebPhoneWrapper: React.FC<WebPhoneWrapperProps> = ({ children }) =>
             {/* Device Mode Selectors */}
             <Text style={styles.controlLabel}>PREVIEW MODE</Text>
             <View style={styles.buttonGroup}>
+              <TouchableOpacity 
+                style={[styles.modeButton, previewMode === 'android_phone' && styles.modeButtonActive]}
+                onPress={() => setPreviewMode('android_phone')}
+              >
+                <Text style={[styles.modeButtonText, previewMode === 'android_phone' && styles.modeButtonTextActive]}>
+                  🤖 Android (411×923)
+                </Text>
+              </TouchableOpacity>
+
               <TouchableOpacity 
                 style={[styles.modeButton, previewMode === 'iphone' && styles.modeButtonActive]}
                 onPress={() => setPreviewMode('iphone')}
@@ -219,6 +233,12 @@ export const WebPhoneWrapper: React.FC<WebPhoneWrapperProps> = ({ children }) =>
           {!showSidePanel && (
             <View style={styles.smallButtonGroup}>
               <TouchableOpacity 
+                style={[styles.smallModeBtn, previewMode === 'android_phone' && styles.smallModeBtnActive]}
+                onPress={() => setPreviewMode('android_phone')}
+              >
+                <Text style={styles.smallBtnText}>411px</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
                 style={[styles.smallModeBtn, previewMode === 'iphone' && styles.smallModeBtnActive]}
                 onPress={() => setPreviewMode('iphone')}
               >
@@ -281,13 +301,20 @@ export const WebPhoneWrapper: React.FC<WebPhoneWrapperProps> = ({ children }) =>
               </View>
 
               {/* The Actual App */}
-              <View nativeID="asas-web-app-frame" style={styles.appContainer}>
+              <View
+                nativeID="asas-web-app-frame"
+                style={[
+                  styles.appContainer,
+                  {
+                    width: dimensions.width,
+                    height: dimensions.height,
+                  },
+                ]}
+              >
                 <View style={{
-                  width: dimensions.width / zoomScale,
-                  height: (dimensions.height - 48 - 24) / zoomScale,
-                  transform: [{ scale: zoomScale }],
-                  transformOrigin: 'top left',
-                } as any}>
+                  width: dimensions.width,
+                  height: dimensions.height,
+                }}>
                   {children}
                 </View>
               </View>
@@ -307,6 +334,10 @@ export const WebPhoneWrapper: React.FC<WebPhoneWrapperProps> = ({ children }) =>
 };
 
 const styles = StyleSheet.create({
+  nativeContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.white,
+  },
   fullscreenContainer: {
     flex: 1,
     width: '100%',
@@ -515,6 +546,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
   },
+  sliderCard: {
+    backgroundColor: '#1a1a20',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#00d4aa33',
+  },
+  sliderCardTitle: {
+    color: '#00d4aa',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  sliderLabel: {
+    color: '#a0a0b0',
+    fontSize: 11,
+    marginBottom: 2,
+  },
+  sliderValue: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
   phoneContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -582,8 +640,12 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   statusBarSim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     height: 48,
-    backgroundColor: '#000000',
+    backgroundColor: 'transparent',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -642,9 +704,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 1,
   },
   appContainer: {
-    flex: 1,
     backgroundColor: '#000000',
-    paddingBottom: 24, // Prevents footer/navigation overlay with Home Indicator
   },
   homeIndicatorContainer: {
     position: 'absolute',
@@ -701,6 +761,29 @@ const styles = StyleSheet.create({
   },
   downloadButtonText: {
     color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  sliderGroup: {
+    backgroundColor: '#151518',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#222227',
+    marginBottom: 20,
+  },
+  sliderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sliderTextLabel: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  sliderValueText: {
+    color: '#E53935',
     fontSize: 12,
     fontWeight: 'bold',
   },

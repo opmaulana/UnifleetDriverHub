@@ -1,10 +1,10 @@
 import React, { useRef, useEffect, useCallback } from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Easing } from 'react-native';
+import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Map, Truck, FileText, Bell, Settings } from 'lucide-react-native';
 import { useOperationsStore } from '../store/useOperationsStore';
 
-import { OperationsLogin } from '../screens/operations/OperationsLogin';
 import { MapScreen } from '../screens/operations/MapScreen';
 import { FleetScreen } from '../screens/operations/FleetScreen';
 import { ReportsScreen } from '../screens/operations/ReportsScreen';
@@ -16,8 +16,33 @@ import { GeofenceAnalyticsScreen } from '../screens/operations/GeofenceAnalytics
 import { VehicleListScreen } from '../screens/operations/VehicleListScreen';
 import { VehicleDetailsScreen } from '../screens/operations/VehicleDetailsScreen';
 
-const Stack = createNativeStackNavigator();
+const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+
+const fadeTransition = {
+  gestureEnabled: false,
+  transitionSpec: {
+    open: {
+      animation: 'timing' as const,
+      config: { 
+        duration: 400,
+        easing: Easing.out(Easing.ease),
+      },
+    },
+    close: {
+      animation: 'timing' as const,
+      config: { 
+        duration: 400,
+        easing: Easing.out(Easing.ease),
+      },
+    },
+  },
+  cardStyleInterpolator: ({ current }: any) => ({
+    cardStyle: {
+      opacity: current.progress,
+    },
+  }),
+};
 
 const ASAS_RED = '#C0392B';
 
@@ -152,8 +177,12 @@ const OperationsTabNavigator = () => {
 // ============================================================
 export const OperationsNavigator = () => {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="OperationsLogin" component={OperationsLogin} />
+    <Stack.Navigator 
+      screenOptions={{ 
+        headerShown: false,
+        ...fadeTransition,
+      }}
+    >
       <Stack.Screen name="OperationsMain" component={OperationsTabNavigator} />
       <Stack.Screen name="ReportDetail" component={ReportDetailScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />

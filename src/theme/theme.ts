@@ -1,3 +1,5 @@
+import { Dimensions, Platform } from 'react-native';
+
 export const theme = {
   colors: {
     primary: '#E53935', // ASAS Red
@@ -88,3 +90,26 @@ export const theme = {
 };
 
 export type Theme = typeof theme;
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Baseline mobile dimensions (standard iPhone 13/14 layout)
+const BASE_WIDTH = 390;
+const BASE_HEIGHT = 844;
+
+export const scale = (size: number) => (SCREEN_WIDTH / BASE_WIDTH) * size;
+export const verticalScale = (size: number) => (SCREEN_HEIGHT / BASE_HEIGHT) * size;
+export const moderateScale = (size: number, factor = 0.5) => size + (scale(size) - size) * factor;
+
+export const playfairBold = Platform.select({
+  web: 'Playfair Display',
+  default: 'PlayfairDisplay-Bold',
+});
+
+export const playfairBoldStyle = {
+  fontFamily: playfairBold,
+  ...Platform.select({
+    web: { fontWeight: '900' as const },
+    default: {},
+  }),
+};

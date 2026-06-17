@@ -8,6 +8,7 @@ import {
   Switch,
   Animated,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -448,6 +449,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   splashBrand: {
+    fontFamily: Platform.select({
+      web: 'Playfair Display',
+      default: 'PlayfairDisplay-Bold',
+    }),
     fontSize: 64,
     fontWeight: '900',
     color: '#C0392B',

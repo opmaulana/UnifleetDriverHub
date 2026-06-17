@@ -268,6 +268,10 @@ const styles = StyleSheet.create({
     height: 50,
   },
   brandText: {
+    fontFamily: Platform.select({
+      web: 'Playfair Display',
+      default: 'PlayfairDisplay-Bold',
+    }),
     fontSize: 18,
     fontWeight: '900',
     color: theme.colors.white,
@@ -367,6 +371,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   splashLogo: {
+    fontFamily: Platform.select({
+      web: 'Playfair Display',
+      default: 'PlayfairDisplay-Bold',
+    }),
     fontSize: 64,
     fontWeight: '900',
     color: theme.colors.primary,

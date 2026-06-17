@@ -136,6 +136,10 @@ const styles = StyleSheet.create({
   },
   brandText: {
     ...theme.typography.h3,
+    fontFamily: Platform.select({
+      web: 'Playfair Display',
+      default: 'PlayfairDisplay-Bold',
+    }),
     color: theme.colors.white,
     fontWeight: '900',
     letterSpacing: 1,

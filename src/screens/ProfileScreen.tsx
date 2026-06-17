@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Platform } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import { GlobalHeader } from '../components/GlobalHeader';
 import { theme } from '../theme/theme';
@@ -238,6 +238,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   splashBrand: {
+    fontFamily: Platform.select({
+      web: 'Playfair Display',
+      default: 'PlayfairDisplay-Bold',
+    }),
     fontSize: 64,
     fontWeight: '900',
     color: theme.colors.primary,

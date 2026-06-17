@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
+  Platform,
+  ScrollView,
 } from 'react-native';
-import { theme } from '../theme/theme';
-import { Card } from '../components/Card';
-import { Truck, Network, BarChart3, ChevronRight, Globe, X, Check } from 'lucide-react-native';
+import { theme, playfairBold, playfairBoldStyle } from '../theme/theme';
+import { Globe, X, Check } from 'lucide-react-native';
 import { useTranslation } from '../hooks/useTranslation';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
@@ -20,7 +21,10 @@ const LANGUAGES = [
   { code: 'sw' as const, name: 'Kiswahili', flag: '🇹🇿' },
 ];
 
-export const IntentSelectionScreen = ({ navigation }: any) => {
+export const IntentSelectionScreen = ({ route, navigation }: any) => {
+  const rawName = route?.params?.visitorName || 'User';
+  const trimmedName = rawName.trim();
+  const visitorName = trimmedName ? (trimmedName.charAt(0).toUpperCase() + trimmedName.slice(1)) : 'User';
   const { isAuthenticated, user } = useStore();
   const { t, language, setLanguage } = useTranslation();
   const [langModalVisible, setLangModalVisible] = useState(false);
@@ -32,7 +36,6 @@ export const IntentSelectionScreen = ({ navigation }: any) => {
       id: 'drivers',
       title: t('asas_drivers'),
       description: t('asas_drivers_desc'),
-      icon: <Truck color={theme.colors.primary} size={32} />,
       onPress: async () => {
         if (isAuthenticated && user?.role === 'DRIVER') {
           try {
@@ -56,7 +59,7 @@ export const IntentSelectionScreen = ({ navigation }: any) => {
             navigation.navigate('Main');
           }
         } else {
-          navigation.navigate('DriverSignup');
+          navigation.navigate('DriversIntro');
         }
       },
     },
@@ -64,70 +67,65 @@ export const IntentSelectionScreen = ({ navigation }: any) => {
       id: 'operators',
       title: t('asas_live_ops'),
       description: t('asas_live_ops_desc'),
-      icon: <Network color={theme.colors.primary} size={32} />,
-      onPress: () => navigation.navigate('OperationsFlow'),
+      onPress: () => navigation.navigate('OpsIntro'),
     },
     {
       id: 'management',
       title: t('asas_management'),
       description: t('asas_management_desc'),
-      icon: <BarChart3 color={theme.colors.primary} size={32} />,
-      onPress: () => navigation.navigate('ManagementFlow'),
+      onPress: () => navigation.navigate('ManagementIntro'),
     },
   ];
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.mainCenterContainer}>
-          <View style={styles.header}>
-            <Text style={styles.brandText}>ASAS</Text>
-            <Text style={styles.welcomeText}>{t('welcome_asas')}</Text>
-            <Text style={styles.subtitle}>{t('select_portal')}</Text>
-          </View>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <Text style={styles.topBrand}>ASAS Mobile</Text>
 
-          <View style={styles.optionsContainer}>
-            {options.map((option) => (
-              <TouchableOpacity
-                key={option.id}
-                onPress={option.onPress}
-                activeOpacity={0.7}
-              >
-                <Card style={styles.optionCard}>
-                  <View style={styles.iconBackground}>
-                    {option.icon}
-                  </View>
-                  <View style={styles.textContainer}>
-                    <Text style={styles.optionTitle}>{option.title}</Text>
-                    <Text style={styles.optionDescription}>{option.description}</Text>
-                  </View>
-                  <ChevronRight color={theme.colors.border} size={20} />
-                </Card>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Language Selector */}
-          <TouchableOpacity
-            style={styles.langSelector}
-            onPress={() => setLangModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Globe color={theme.colors.primary} size={20} />
-            <Text style={styles.langSelectorText}>
-              {currentLang.flag}  {currentLang.name}
-            </Text>
-            <ChevronRight color={theme.colors.border} size={16} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            {t('built_by')} <Text style={styles.linkText}>Unifleet Labs</Text>
+        <View style={styles.heroContent}>
+          <Text style={styles.heroTitle}>ASAS Mobile</Text>
+          <Text style={styles.heroTagline}>
+            Total fleet control,{"\n"}right in your pocket.
           </Text>
-          <Text style={styles.versionText}>V1.3</Text>
+          <Text style={styles.heroSubtitle}>Let’s get you started.</Text>
         </View>
-      </View>
+
+        <View style={styles.welcomeBox}>
+          <Text style={styles.welcomeTitle}>
+            {t('welcome_name')}<Text style={styles.welcomeName}>{visitorName || 'User'}</Text>,
+          </Text>
+          <Text style={styles.welcomeDesc}>{t('welcome_desc')}</Text>
+        </View>
+
+        <View style={styles.optionsContainer}>
+          {options.map((option) => (
+            <TouchableOpacity
+              key={option.id}
+              onPress={option.onPress}
+              activeOpacity={0.8}
+              style={styles.optionCard}
+            >
+              <Text style={styles.optionTitle}>{option.title}</Text>
+              <Text style={styles.optionDescription}>{option.description}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Language Selector */}
+        <TouchableOpacity
+          style={styles.langSelector}
+          onPress={() => setLangModalVisible(true)}
+          activeOpacity={0.7}
+        >
+          <Globe color={theme.colors.primary} size={18} />
+          <Text style={styles.langSelectorText}>
+            {currentLang.flag}  {currentLang.name}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
 
       {/* Language Modal */}
       <Modal
@@ -181,106 +179,121 @@ export const IntentSelectionScreen = ({ navigation }: any) => {
   );
 };
 
+
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#FFFFFF',
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
+  scrollContent: {
+    paddingHorizontal: 32,
+    paddingTop: Platform.OS === 'ios' ? 24 : 48,
+    paddingBottom: 48,
   },
-  mainCenterContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    width: '100%',
-    paddingVertical: 16,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 48,
-  },
-  brandText: {
-    fontSize: 48,
-    fontWeight: '900',
+  topBrand: {
+    ...playfairBoldStyle,
     color: theme.colors.primary,
-    letterSpacing: 2,
+    fontSize: 30,
+    letterSpacing: -1,
+    marginBottom: 32,
+  },
+  heroContent: {
+    marginBottom: 32,
+  },
+  heroTitle: {
+    ...playfairBoldStyle,
+    color: theme.colors.primary,
+    fontSize: 62,
+    lineHeight: 70,
+    letterSpacing: -2,
+    marginBottom: 24,
+  },
+  heroTagline: {
+    ...playfairBoldStyle,
+    color: theme.colors.text,
+    fontSize: 38,
+    lineHeight: 48,
+    letterSpacing: -1.2,
+    marginBottom: 24,
+  },
+  heroSubtitle: {
+    color: '#4A4A4A',
+    fontSize: 22,
+    fontWeight: '500',
+    lineHeight: 30,
+  },
+  welcomeBox: {
+    backgroundColor: '#FFF8F8',
+    borderWidth: 1.5,
+    borderColor: '#FFD0CE',
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 24,
+  },
+  welcomeTitle: {
+    ...playfairBoldStyle,
+    fontSize: 22,
+    color: '#000000',
     marginBottom: 8,
   },
-  welcomeText: {
-    ...theme.typography.h1,
-    color: theme.colors.text,
-    fontSize: 28,
+  welcomeName: {
+    color: theme.colors.primary,
   },
-  subtitle: {
-    ...theme.typography.bodyMd,
-    color: theme.colors.textSecondary,
-    marginTop: 8,
+  welcomeDesc: {
+    fontSize: 15,
+    color: '#4A4A4A',
+    lineHeight: 22,
+    fontWeight: '400',
   },
   optionsContainer: {
     gap: 16,
+    marginBottom: 28,
   },
   optionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    borderRadius: 20,
-    backgroundColor: theme.colors.white,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  iconBackground: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    backgroundColor: theme.colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 20,
-  },
-  textContainer: {
-    flex: 1,
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 3,
   },
   optionTitle: {
-    ...theme.typography.h2,
+    ...playfairBoldStyle,
     fontSize: 22,
-    color: theme.colors.text,
-    marginBottom: 4,
+    color: '#000000',
+    marginBottom: 6,
   },
   optionDescription: {
-    ...theme.typography.bodyMd,
-    color: theme.colors.textSecondary,
     fontSize: 14,
+    color: '#7E7E7E',
     lineHeight: 20,
   },
-
-  // ---- Language Selector ----
   langSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginTop: 28,
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
     alignSelf: 'center',
     backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
     borderRadius: 100,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.04,
     shadowRadius: 6,
-    elevation: 3,
+    elevation: 2,
   },
   langSelectorText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: theme.colors.text,
   },
-
-  // ---- Modal ----
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -338,26 +351,5 @@ const styles = StyleSheet.create({
   langNameActive: {
     fontWeight: '700',
     color: theme.colors.primary,
-  },
-
-  // ---- Footer ----
-  footer: {
-    marginTop: 'auto',
-    alignItems: 'center',
-    paddingBottom: 20,
-  },
-  footerText: {
-    ...theme.typography.labelSm,
-    color: theme.colors.textSecondary,
-  },
-  linkText: {
-    color: '#2196F3',
-    fontWeight: '700',
-  },
-  versionText: {
-    ...theme.typography.labelSm,
-    color: theme.colors.border,
-    fontSize: 10,
-    marginTop: 4,
   },
 });

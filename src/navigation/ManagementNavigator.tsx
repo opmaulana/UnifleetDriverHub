@@ -1,9 +1,9 @@
 import React from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Easing } from 'react-native';
+import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Home, CheckSquare, Settings } from 'lucide-react-native';
 import { theme } from '../theme/theme';
-import { ManagementLogin } from '../screens/management/ManagementLogin';
 import { ManagementDashboard } from '../screens/management/ManagementDashboard';
 import { NominationForm } from '../screens/management/NominationForm';
 import { ActiveNominations } from '../screens/management/ActiveNominations';
@@ -12,8 +12,33 @@ import { UnloadingConfirmation } from '../screens/management/UnloadingConfirmati
 import { ApprovalsScreen } from '../screens/management/ApprovalsScreen';
 import { ManagementSettingsScreen } from '../screens/management/ManagementSettingsScreen';
 
-const Stack = createNativeStackNavigator();
+const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+
+const fadeTransition = {
+  gestureEnabled: false,
+  transitionSpec: {
+    open: {
+      animation: 'timing' as const,
+      config: { 
+        duration: 400,
+        easing: Easing.out(Easing.ease),
+      },
+    },
+    close: {
+      animation: 'timing' as const,
+      config: { 
+        duration: 400,
+        easing: Easing.out(Easing.ease),
+      },
+    },
+  },
+  cardStyleInterpolator: ({ current }: any) => ({
+    cardStyle: {
+      opacity: current.progress,
+    },
+  }),
+};
 
 const ManagementTabs = () => {
   return (
@@ -62,8 +87,12 @@ const ManagementTabs = () => {
 
 export const ManagementNavigator = () => {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ManagementLogin" component={ManagementLogin} />
+    <Stack.Navigator 
+      screenOptions={{ 
+        headerShown: false,
+        ...fadeTransition,
+      }}
+    >
       <Stack.Screen name="ManagementDashboard" component={ManagementTabs} />
       <Stack.Screen name="NominationForm" component={NominationForm} />
       <Stack.Screen name="ActiveNominations" component={ActiveNominations} />

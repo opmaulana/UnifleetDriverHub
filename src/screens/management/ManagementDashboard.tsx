@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { theme } from '../../theme/theme';
 import { Card } from '../../components/Card';
 import { MapPin, Navigation, Truck, Menu, ChevronRight } from 'lucide-react-native';
@@ -114,6 +114,10 @@ const styles = StyleSheet.create({
   },
   brandText: {
     ...theme.typography.h3,
+    fontFamily: Platform.select({
+      web: 'Playfair Display',
+      default: 'PlayfairDisplay-Bold',
+    }),
     color: theme.colors.white,
     fontWeight: '900',
     letterSpacing: 1,
