@@ -44,9 +44,6 @@ export const DriversIntroScreen = ({ navigation }: any) => {
         >
           <View style={styles.heroContent}>
             <Text style={styles.heroTitle}>Drivers Hub</Text>
-            <Text style={styles.heroTagline}>
-              For drivers to manage trips, tasks and updates.
-            </Text>
             <Text style={styles.heroDesc}>
               Access your route schedules, report live transit updates, and communicate seamlessly with operations — all from a single screen.
             </Text>

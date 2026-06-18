@@ -115,9 +115,6 @@ export const OpsIntroScreen = ({ navigation }: any) => {
           >
             <View style={[styles.heroContent, isLoginActive && styles.heroContentActive]}>
               <Text style={styles.heroTitle}>Live Operations</Text>
-              <Text style={styles.heroTagline}>
-                For on-ground staff to{"\n"}monitor and manage operations.
-              </Text>
               {!isLoginActive && (
                 <Text style={styles.heroDesc}>
                   Access real-time operational updates, coordinate field activities, and stay connected with your team — all in one place. Let’s get you started.

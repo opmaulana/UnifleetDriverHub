@@ -117,10 +117,24 @@ export const ManagementIntroScreen = ({ navigation }: any) => {
             keyboardShouldPersistTaps="handled"
           >
             <View style={[styles.heroContent, isLoginActive && styles.heroContentActive]}>
-              <Text style={styles.heroTitle}>Management Console</Text>
-              <Text style={styles.heroTagline}>
-                For stakeholders to analyze and{"\n"}monitor their fleet on the go.
-              </Text>
+              <View style={styles.managementTitleBlock}>
+                <Text
+                  style={[styles.managementHeroTitle, styles.managementTitleTopLine]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.86}
+                >
+                  Management
+                </Text>
+                <Text
+                  style={styles.managementHeroTitle}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.86}
+                >
+                  Console
+                </Text>
+              </View>
               {!isLoginActive && (
                 <Text style={styles.heroDesc}>
                   Access insights, monitor performance, and make data-driven decisions — all in one place. Let’s get you started.
@@ -268,6 +282,19 @@ const styles = StyleSheet.create({
     lineHeight: 70,
     letterSpacing: -2,
     marginBottom: 24,
+  },
+  managementTitleBlock: {
+    marginBottom: 24,
+  },
+  managementHeroTitle: {
+    fontFamily: playfairBold,
+    color: theme.colors.primary,
+    fontSize: 54,
+    fontWeight: '900',
+    lineHeight: 62,
+  },
+  managementTitleTopLine: {
+    transform: [{ translateY: -8 }],
   },
   heroTagline: {
     fontFamily: playfairBold,
