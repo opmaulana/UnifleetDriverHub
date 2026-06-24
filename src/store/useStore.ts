@@ -129,7 +129,7 @@ export const useStore = create<AppState>()(
           status: 'pending',
           pickup: 'Terminal 1, JKIA',
           dropoff: 'Westlands, Nairobi',
-          estimatedEarnings: 'KES 2,400',
+          estimatedEarnings: '100% Target',
           distance: '18.5 km',
           time: '35 min',
         }
@@ -142,7 +142,7 @@ export const useStore = create<AppState>()(
       setIntroTruckX: (x) => set({ introTruckX: x }),
       setIntroTruckY: (y) => set({ introTruckY: y }),
       setIntroTruckScale: (s) => set({ introTruckScale: s }),
-      introTextY: 141,
+      introTextY: 70,
       introTextX: -96,
       introTextScale: 0.85,
       setIntroTextX: (x) => set({ introTextX: x }),

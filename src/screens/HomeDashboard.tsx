@@ -5,7 +5,7 @@ import { GlobalHeader } from '../components/GlobalHeader';
 import { theme } from '../theme/theme';
 import { useStore } from '../store/useStore';
 import { Button } from '../components/Button';
-import { Bell, MapPin, Navigation, Clock, CreditCard, ArrowLeft, Truck, AlertTriangle, Phone, MoonStar, ChevronUp, X, Zap, Wifi, WifiOff, User, Activity, Gauge, Fuel, MapPinned, Radar, Route } from 'lucide-react-native';
+import { Bell, MapPin, Navigation, Clock, CreditCard, ArrowLeft, ArrowRight, Lock, Truck, AlertTriangle, Phone, MoonStar, ChevronUp, X, Zap, Wifi, WifiOff, User, Activity, Gauge, Fuel, MapPinned, Radar, Route, Package, CheckCircle, Info, Pause, Square } from 'lucide-react-native';
 import { useTranslation } from '../hooks/useTranslation';
 import { useLiveTracking } from '../hooks/useLiveTracking';
 import { supabase } from '../lib/supabase';
@@ -63,6 +63,49 @@ export const HomeDashboard = ({ navigation }: any) => {
     setDriverTripNearby,
   } = useStore();
   const [isSOSVisible, setIsSOSVisible] = useState(false);
+  const [simulationStage, setSimulationStage] = useState<'awaiting' | 'assigned' | 'convoy_ready' | 'trip_active'>('awaiting');
+  const isDevBypass = user?.driver_id === 'dev-bypass-driver';
+
+  const { width: SCREEN_WIDTH } = Dimensions.get('window');
+  const SLIDER_CONTAINER_WIDTH = SCREEN_WIDTH - 40;
+  const HANDLE_SIZE = 54;
+  const MAX_SLIDE_DIST = SLIDER_CONTAINER_WIDTH - HANDLE_SIZE - 8; // 4px padding on each side
+  const slideX = useRef(new Animated.Value(0)).current;
+
+  const sliderPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {},
+      onPanResponderMove: (_, gestureState) => {
+        let nextX = gestureState.dx;
+        if (nextX < 0) nextX = 0;
+        if (nextX > MAX_SLIDE_DIST) nextX = MAX_SLIDE_DIST;
+        slideX.setValue(nextX);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx >= MAX_SLIDE_DIST * 0.85) {
+          // Success! Slide to end and trigger active trip state
+          Animated.timing(slideX, {
+            toValue: MAX_SLIDE_DIST,
+            duration: 100,
+            useNativeDriver: false,
+          }).start(() => {
+            console.log("Trip Started");
+            setSimulationStage('trip_active');
+          });
+        } else {
+          // Reset slider back
+          Animated.spring(slideX, {
+            toValue: 0,
+            useNativeDriver: false,
+            tension: 50,
+            friction: 7,
+          }).start();
+        }
+      },
+    })
+  ).current;
   const [isNightPillExpanded, setIsNightPillExpanded] = useState(false);
   const [isSpeedPillExpanded, setIsSpeedPillExpanded] = useState(false);
   const [isTruckSelected, setIsTruckSelected] = useState(false);
@@ -166,8 +209,21 @@ export const HomeDashboard = ({ navigation }: any) => {
     }).start(() => setIsTruckSelected(false));
   };
 
-  // Auto-fit map to show both markers
+  // Auto-fit map to show both markers or simulated route
   useEffect(() => {
+    if (simulationStage === 'assigned' || simulationStage === 'convoy_ready' || simulationStage === 'trip_active') {
+      if (mapRef.current) {
+        mapRef.current.fitToCoordinates(
+          [
+            { latitude: -6.7924, longitude: 39.2083 }, // Dar es Salaam
+            { latitude: -12.9774, longitude: 28.6500 }, // Ndola
+          ],
+          { edgePadding: { top: 180, right: 60, bottom: 380, left: 60 }, animated: true }
+        );
+      }
+      return;
+    }
+
     if (tracking.driverLat && tracking.truckLat && mapRef.current) {
       mapRef.current.fitToCoordinates(
         [
@@ -184,7 +240,7 @@ export const HomeDashboard = ({ navigation }: any) => {
         longitudeDelta: 0.01,
       }, 1000);
     }
-  }, [tracking.driverLat, tracking.truckLat]);
+  }, [tracking.driverLat, tracking.truckLat, simulationStage]);
 
   const driverInitial = user?.name?.charAt(0)?.toUpperCase() || 'D';
   const truckInitial = user?.tracker_name?.charAt(0)?.toUpperCase() || 'T';
@@ -391,10 +447,21 @@ export const HomeDashboard = ({ navigation }: any) => {
     }
 
     return (
-      <TouchableOpacity style={styles.vehicleActionBtn} onPress={handleTruckPress} activeOpacity={0.85}>
-        <Truck size={18} color={theme.colors.primary} />
-        <Text style={styles.vehicleActionBtnText}>View My Vehicle</Text>
-      </TouchableOpacity>
+      <View style={{ width: '100%' }}>
+        <TouchableOpacity style={styles.vehicleActionBtn} onPress={handleTruckPress} activeOpacity={0.85}>
+          <Truck size={18} color={theme.colors.primary} />
+          <Text style={styles.vehicleActionBtnText}>View My Vehicle</Text>
+        </TouchableOpacity>
+        {isDevBypass && simulationStage === 'awaiting' && (
+          <TouchableOpacity
+            style={[styles.tripActionBtn, styles.tripStartBtn, { marginTop: 8 }]}
+            onPress={() => setSimulationStage('assigned')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.tripStartBtnText}>Next →</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     );
   };
 
@@ -408,6 +475,71 @@ export const HomeDashboard = ({ navigation }: any) => {
       <View style={{ zIndex: 10, position: 'absolute', top: 0, left: 0, right: 0 }}>
         <GlobalHeader />
       </View>
+
+      {/* Consignment Card Overlay (Simulation Mode Only) */}
+      {isDevBypass && (simulationStage === 'assigned' || simulationStage === 'convoy_ready' || simulationStage === 'trip_active') && (
+        <View style={styles.simConsignmentCard}>
+          <View style={styles.simCardHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.simCardTitle}>Consignment #123</Text>
+              <Text style={styles.simCardRoute}>
+                Dar es Salaam <Text style={{ color: theme.colors.primary }}>→</Text> Ndola
+              </Text>
+            </View>
+            <TouchableOpacity 
+              style={[styles.simStatusBadge, simulationStage === 'trip_active' && { borderColor: '#E53935', backgroundColor: '#FFEEEF', flexDirection: 'row', alignItems: 'center' }]}
+              onPress={() => {
+                if (simulationStage === 'trip_active') {
+                  slideX.setValue(0);
+                  setSimulationStage('awaiting');
+                }
+              }}
+              disabled={simulationStage !== 'trip_active'}
+              activeOpacity={0.7}
+            >
+              {simulationStage === 'trip_active' ? (
+                <>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#E53935', marginRight: 5 }} />
+                  <Text style={[styles.simStatusText, { color: '#E53935', fontWeight: '800' }]}>ACTIVE</Text>
+                </>
+              ) : simulationStage === 'convoy_ready' ? (
+                <Text style={styles.simStatusText}>✓ READY</Text>
+              ) : (
+                <>
+                  <Package size={14} color={theme.colors.primary} style={{ marginRight: 4 }} />
+                  <Text style={styles.simStatusText}>ASSIGNED</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+          <View style={styles.simDivider} />
+          <View style={styles.simStatsRow}>
+            <View style={styles.simStatCol}>
+              <Text style={styles.simStatLabel}>Vehicles in Convoy</Text>
+              <View style={styles.simStatValRow}>
+                <Truck size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+                <Text style={styles.simStatValue}>4</Text>
+              </View>
+            </View>
+            <View style={styles.simStatsDivider} />
+            <View style={styles.simStatCol}>
+              <Text style={styles.simStatLabel}>
+                {simulationStage === 'trip_active' ? 'Vehicles Online' : 'Ready Vehicles'}
+              </Text>
+              <View style={styles.simStatValRow}>
+                {simulationStage === 'trip_active' ? (
+                  <Wifi size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+                ) : (
+                  <CheckCircle size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+                )}
+                <Text style={styles.simStatValue}>
+                  {simulationStage === 'trip_active' || simulationStage === 'convoy_ready' ? '4/4' : '0/4'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
       {/* Map Background */}
       <MapView
         ref={mapRef}
@@ -422,63 +554,122 @@ export const HomeDashboard = ({ navigation }: any) => {
         showsMyLocationButton={false}
         onPress={handleMapPress}
       >
-        {/* Driver Marker */}
-        {tracking.driverLat && tracking.driverLng && (
-          <Marker
-            identifier="driver-location"
-            coordinate={{ latitude: tracking.driverLat, longitude: tracking.driverLng }}
-            title={user?.name || 'You'}
-            description="Your current location"
-            zIndex={2}
-          >
-            <View style={styles.driverMarker}>
-              <Text style={styles.driverMarkerText}>{driverInitial}</Text>
-            </View>
-          </Marker>
-        )}
+        {(simulationStage === 'assigned' || simulationStage === 'convoy_ready') ? (
+          <>
+            {/* Origin Marker: Dar es Salaam */}
+            <Marker
+              coordinate={{ latitude: -6.7924, longitude: 39.2083 }}
+              anchor={{ x: 0.15, y: 0.85 }}
+            >
+              <View style={styles.simMarkerWrapper}>
+                <MapPin size={24} color="#E53935" fill="#E53935" />
+                <View style={styles.simMarkerBubble}>
+                  <Text style={styles.simMarkerBubbleText}>Dar es Salaam</Text>
+                </View>
+              </View>
+            </Marker>
 
-        {/* Truck Marker */}
-        {tracking.truckLat && tracking.truckLng && (
-          <Marker
-            identifier="assigned-truck"
-            coordinate={{ latitude: tracking.truckLat, longitude: tracking.truckLng }}
-            title={user?.tracker_name || 'Assigned Truck'}
-            description="Your assigned vehicle"
-            onPress={handleTruckPress}
-            anchor={{ x: 0.5, y: 0.5 }}
-            zIndex={3}
-          >
-            <View style={[styles.truckMarker, isTruckSelected && styles.truckMarkerSelected]}>
-              <Text style={styles.truckMarkerText}>{truckInitial}</Text>
-            </View>
-          </Marker>
-        )}
+            {/* Destination Marker: Ndola */}
+            <Marker
+              coordinate={{ latitude: -12.9774, longitude: 28.6500 }}
+              anchor={{ x: 0.15, y: 0.85 }}
+            >
+              <View style={styles.simMarkerWrapper}>
+                <MapPin size={24} color="#1D1D1F" fill="#1D1D1F" />
+                <View style={styles.simMarkerBubble}>
+                  <Text style={styles.simMarkerBubbleText}>Ndola</Text>
+                </View>
+              </View>
+            </Marker>
 
-        {/* Distance Polyline — shown only when truck is selected */}
-        {isTruckSelected && tracking.driverLat && tracking.driverLng && tracking.truckLat && tracking.truckLng && (
-          <Polyline
-            coordinates={[
-              { latitude: tracking.driverLat, longitude: tracking.driverLng },
-              { latitude: tracking.truckLat, longitude: tracking.truckLng },
-            ]}
-            strokeColor={theme.colors.primary}
-            strokeWidth={3}
-            lineDashPattern={[10, 6]}
-          />
-        )}
+            {/* Driver Location Marker */}
+            <Marker
+              coordinate={{ latitude: -8.7832, longitude: 34.5085 }}
+              anchor={{ x: 0.5, y: 0.5 }}
+            >
+              <View style={styles.simDriverMarkerCircleOuter}>
+                <View style={styles.simDriverMarkerCircleInner} />
+              </View>
+            </Marker>
 
-        {/* Distance Label at midpoint */}
-        {isTruckSelected && midPoint && distanceKm !== null && (
-          <Marker
-            identifier="driver-truck-distance"
-            coordinate={midPoint}
-            anchor={{ x: 0.5, y: 0.5 }}
-            zIndex={10}
-          >
-            <View style={styles.distanceBadge}>
-              <Text style={styles.distanceBadgeText}>{formatDistance(distanceKm)}</Text>
-            </View>
-          </Marker>
+            {/* Simulated Route Polyline */}
+            <Polyline
+              coordinates={[
+                { latitude: -6.7924, longitude: 39.2083 }, // Dar es Salaam
+                { latitude: -6.8278, longitude: 37.6591 }, // Morogoro
+                { latitude: -7.7854, longitude: 35.6861 }, // Iringa
+                { latitude: -8.9000, longitude: 33.4500 }, // Mbeya
+                { latitude: -9.3000, longitude: 32.7700 }, // Tunduma
+                { latitude: -11.8300, longitude: 31.4500 }, // Mpika
+                { latitude: -13.2300, longitude: 30.2300 }, // Serenje
+                { latitude: -12.9774, longitude: 28.6500 }, // Ndola
+              ]}
+              strokeColor="#E53935"
+              strokeWidth={3}
+              lineDashPattern={[6, 6]}
+            />
+          </>
+        ) : (
+          <>
+            {/* Driver Marker */}
+            {tracking.driverLat && tracking.driverLng && (
+              <Marker
+                identifier="driver-location"
+                coordinate={{ latitude: tracking.driverLat, longitude: tracking.driverLng }}
+                title={user?.name || 'You'}
+                description="Your current location"
+                zIndex={2}
+              >
+                <View style={styles.driverMarker}>
+                  <Text style={styles.driverMarkerText}>{driverInitial}</Text>
+                </View>
+              </Marker>
+            )}
+
+            {/* Truck Marker */}
+            {tracking.truckLat && tracking.truckLng && (
+              <Marker
+                identifier="assigned-truck"
+                coordinate={{ latitude: tracking.truckLat, longitude: tracking.truckLng }}
+                title={user?.tracker_name || 'Assigned Truck'}
+                description="Your assigned vehicle"
+                onPress={handleTruckPress}
+                anchor={{ x: 0.5, y: 0.5 }}
+                zIndex={3}
+              >
+                <View style={[styles.truckMarker, isTruckSelected && styles.truckMarkerSelected]}>
+                  <Text style={styles.truckMarkerText}>{truckInitial}</Text>
+                </View>
+              </Marker>
+            )}
+
+            {/* Distance Polyline — shown only when truck is selected */}
+            {isTruckSelected && tracking.driverLat && tracking.driverLng && tracking.truckLat && tracking.truckLng && (
+              <Polyline
+                coordinates={[
+                  { latitude: tracking.driverLat, longitude: tracking.driverLng },
+                  { latitude: tracking.truckLat, longitude: tracking.truckLng },
+                ]}
+                strokeColor={theme.colors.primary}
+                strokeWidth={3}
+                lineDashPattern={[10, 6]}
+              />
+            )}
+
+            {/* Distance Label at midpoint */}
+            {isTruckSelected && midPoint && distanceKm !== null && (
+              <Marker
+                identifier="driver-truck-distance"
+                coordinate={midPoint}
+                anchor={{ x: 0.5, y: 0.5 }}
+                zIndex={10}
+              >
+                <View style={styles.distanceBadge}>
+                  <Text style={styles.distanceBadgeText}>{formatDistance(distanceKm)}</Text>
+                </View>
+              </Marker>
+            )}
+          </>
         )}
       </MapView>
 
@@ -530,9 +721,31 @@ export const HomeDashboard = ({ navigation }: any) => {
         </Animated.View>
       )}
 
+      {/* Zoom Button Overlay (Simulation Mode Only) */}
+      {isDevBypass && (simulationStage === 'assigned' || simulationStage === 'convoy_ready' || simulationStage === 'trip_active') && (
+        <TouchableOpacity
+          style={styles.zoomButton}
+          onPress={() => {
+            // Animate map view to zoom out slightly to show Tanzania & Zambia route
+            mapRef.current?.animateToRegion({
+              latitude: -9.88,
+              longitude: 33.93,
+              latitudeDelta: 8.5,
+              longitudeDelta: 8.5,
+            }, 1000);
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.zoomButtonText}>−</Text>
+        </TouchableOpacity>
+      )}
+
       {/* SOS Button Overlay */}
       <TouchableOpacity 
-        style={styles.sosButton} 
+        style={[
+          styles.sosButton,
+          (simulationStage === 'assigned' || simulationStage === 'convoy_ready' || simulationStage === 'trip_active') && { top: 240 }
+        ]} 
         onPress={() => setIsSOSVisible(true)}
         activeOpacity={0.8}
       >
@@ -541,14 +754,18 @@ export const HomeDashboard = ({ navigation }: any) => {
 
       {/* Night Hours Pill Overlay */}
       <TouchableOpacity 
-        style={styles.nightPill} 
+        style={[
+          styles.nightPill,
+          (simulationStage === 'assigned' || simulationStage === 'convoy_ready' || simulationStage === 'trip_active') && { top: 310, width: 56, height: 56, borderRadius: 28, justifyContent: 'center', paddingHorizontal: 0 }
+        ]} 
         onPress={() => {
+          if (simulationStage === 'assigned' || simulationStage === 'convoy_ready' || simulationStage === 'trip_active') return;
           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
           setIsNightPillExpanded(!isNightPillExpanded);
         }}
         activeOpacity={0.8}
       >
-        {isNightPillExpanded && (
+        {isNightPillExpanded && simulationStage !== 'assigned' && simulationStage !== 'convoy_ready' && simulationStage !== 'trip_active' && (
           <View style={styles.nightPillTextContainer}>
             <Text style={styles.nightHoursText}>{t('night_hours')} - 2.1 Hrs.</Text>
             <Text style={styles.nightResetText}>{t('reset_next_month')}</Text>
@@ -561,14 +778,18 @@ export const HomeDashboard = ({ navigation }: any) => {
 
       {/* Speed Violation Pill Overlay */}
       <TouchableOpacity 
-        style={styles.speedPill} 
+        style={[
+          styles.speedPill,
+          (simulationStage === 'assigned' || simulationStage === 'convoy_ready' || simulationStage === 'trip_active') && { top: 380, width: 56, height: 56, borderRadius: 28, justifyContent: 'center', paddingHorizontal: 0 }
+        ]} 
         onPress={() => {
+          if (simulationStage === 'assigned' || simulationStage === 'convoy_ready' || simulationStage === 'trip_active') return;
           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
           setIsSpeedPillExpanded(!isSpeedPillExpanded);
         }}
         activeOpacity={0.8}
       >
-        {isSpeedPillExpanded && (
+        {isSpeedPillExpanded && simulationStage !== 'assigned' && simulationStage !== 'convoy_ready' && simulationStage !== 'trip_active' && (
           <View style={styles.nightPillTextContainer}>
             <Text style={styles.nightHoursText}>{t('over_80_time')}</Text>
             <Text style={styles.nightResetText}>{t('reset_next_month')}</Text>
@@ -581,201 +802,513 @@ export const HomeDashboard = ({ navigation }: any) => {
       </TouchableOpacity>
 
       {/* Draggable Bottom Sheet */}
-      <Animated.View style={[styles.floatingCard, { height: sheetHeight }]} {...panResponder.panHandlers}>
-        {/* Handle — tap to toggle */}
-        <TouchableOpacity style={styles.handleContainer} onPress={handleTap} activeOpacity={0.9}>
-          <Animated.View style={{ transform: [{ rotate: arrowRotateInterpolation }] }}>
-            <ChevronUp size={24} color={theme.colors.textSecondary} />
-          </Animated.View>
-        </TouchableOpacity>
+      <Animated.View 
+        style={[
+          styles.floatingCard, 
+          { 
+            height: simulationStage === 'assigned' 
+              ? 400 
+              : simulationStage === 'convoy_ready' 
+                ? 480 
+                : simulationStage === 'trip_active' 
+                  ? 520 
+                  : sheetHeight 
+          }
+        ]} 
+        {...((simulationStage === 'assigned' || simulationStage === 'convoy_ready' || simulationStage === 'trip_active') ? {} : panResponder.panHandlers)}
+      >
+        {simulationStage === 'assigned' ? (
+          <View style={styles.simSheetContent}>
+            {/* Handle */}
+            <View style={styles.handleContainer}>
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#D2D2D7' }} />
+            </View>
+            
+            {/* Title Block */}
+            <View style={styles.simProximityHeader}>
+              <View style={styles.simPinCircle}>
+                <MapPin size={20} color={theme.colors.primary} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.simProximityTitle}>Move closer to your assigned vehicle</Text>
+                <Text style={styles.simProximitySubtitle}>
+                  You need to be within 500m of your truck to mark yourself as Ready.
+                </Text>
+              </View>
+            </View>
 
-        <View style={styles.cardContent}>
-          {!activeTrip ? (
-            <View style={styles.noTripContent}>
-              {/* Status Header */}
-              <View style={styles.statusHeader}>
-                <View style={styles.statusIconWrap}>
-                  <Activity size={20} color={theme.colors.primary} />
+            {/* Proximity Card (gray background) */}
+            <View style={styles.simTruckDistanceCard}>
+              <View style={styles.simTruckCol}>
+                <View style={styles.simTruckCircle}>
+                  <Truck size={18} color={theme.colors.primary} />
                 </View>
-                <View style={styles.statusTextWrap}>
-                  <Text style={styles.sheetTitle}>{driverTripTitle}</Text>
-                  <Text style={styles.sheetSubtitle}>{driverTripSubtitle}</Text>
+                <View style={{ marginLeft: 10 }}>
+                  <Text style={styles.simTruckLabel}>Your Vehicle</Text>
+                  <Text style={styles.simTruckName}>ASAS TRK 04</Text>
+                  <Text style={styles.simTrackerName}>ASAS Tracker 04</Text>
                 </View>
               </View>
-
-              {(driverTripSession?.status === 'active' || driverTripSession?.status === 'stopped' || driverTripSession?.status === 'delivered_pending_approval') && (
-                <View style={styles.timerStrip}>
-                  <View style={styles.timerItem}>
-                    <Text style={styles.timerLabel}>Drive Timer</Text>
-                    <Text style={styles.timerValue}>{formatTimer(activeSeconds)}</Text>
-                  </View>
-                  <View style={styles.timerDivider} />
-                  <View style={styles.timerItem}>
-                    <Text style={styles.timerLabel}>Stop Timer</Text>
-                    <Text style={[styles.timerValue, driverTripSession?.status === 'stopped' && stoppedSeconds >= ENGINE_IDLE_WARNING_SECONDS && styles.timerWarning]}>
-                      {formatTimer(stoppedSeconds)}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {driverTripSession?.status === 'stopped' && (
-                <View style={styles.engineDisclaimer}>
-                  <AlertTriangle size={16} color="#B45309" />
-                  <Text style={styles.engineDisclaimerText}>
-                    If stopping for more than 2 minutes, please shut off the engine.
-                  </Text>
-                </View>
-              )}
               
-              {expanded && (
-                <ScrollView 
-                  showsVerticalScrollIndicator={false}
-                  style={styles.expandedScroll}
-                  contentContainerStyle={styles.expandedScrollContent}
-                  nestedScrollEnabled={true}
-                >
-                  {/* Telemetry Row — 3 metrics */}
-                  <View style={styles.telemetryRow}>
-                    <View style={styles.telemetryItem}>
-                      <Clock size={16} color={theme.colors.primary} />
-                      <Text style={styles.telemetryLabel}>Drive Timer</Text>
-                      <Text style={styles.telemetryValue}>{formatTimer(activeSeconds)}</Text>
-                      <Text style={styles.telemetrySub}>This Shift</Text>
-                    </View>
-                    <View style={styles.telemetryItem}>
-                      <Navigation size={16} color={theme.colors.primary} />
-                      <Text style={styles.telemetryLabel}>Trips Completed</Text>
-                      <Text style={styles.telemetryValue}>{tripStats.loading ? '...' : tripStats.completedCount}</Text>
-                      <Text style={styles.telemetrySub}>Today</Text>
-                    </View>
-                    <View style={styles.telemetryItem}>
-                      <Route size={16} color={theme.colors.primary} />
-                      <Text style={styles.telemetryLabel}>Distance Today</Text>
-                      <Text style={styles.telemetryValue}>{tripStats.loading ? '...' : `${tripStats.totalDistance} km`}</Text>
-                      <Text style={styles.telemetrySub}>Driven</Text>
-                    </View>
-                  </View>
-
-                  {/* Proximity Section */}
-                  <View style={styles.proximityRow}>
-                    <View style={styles.proximityCard}>
-                      <View style={styles.proximityIconWrap}>
-                        <Truck size={16} color={theme.colors.primary} />
-                      </View>
-                      <View>
-                        <Text style={styles.proximityLabel}>Distance to Vehicle</Text>
-                        <Text style={styles.proximityValue}>
-                          {distanceKm !== null ? formatDistance(distanceKm) : '—'}
-                        </Text>
-                        <Text style={styles.proximitySub}>
-                          {distanceKm !== null ? (distanceKm < 0.5 ? 'Very Close' : distanceKm < 5 ? 'Nearby' : 'En Route') : '—'}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.proximityCard}>
-                      <View style={[styles.proximityIconWrap, { backgroundColor: '#E8F5E9' }]}>
-                        <Radar size={16} color="#4CAF50" />
-                      </View>
-                      <View>
-                        <Text style={styles.proximityLabel}>Proximity Alert</Text>
-                        <Text style={[styles.proximityValue, { color: isWithinStartRange ? '#4CAF50' : '#FF9800' }]}>
-                          {isWithinStartRange ? 'Ready' : 'Not Ready'}
-                        </Text>
-                        <Text style={styles.proximitySub}>
-                          {isWithinStartRange ? 'Start enabled' : `Within ${Math.round(PROXIMITY_START_KM * 1000)} m required`}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Fleet KPI Grid — 2×2 */}
-                  <View style={styles.kpiGrid}>
-                    <View style={styles.kpiCard}>
-                      <View style={styles.kpiIconWrap}>
-                        <Gauge size={18} color={theme.colors.primary} />
-                      </View>
-                      <View>
-                        <Text style={styles.kpiLabel}>Average Speed</Text>
-                        <Text style={styles.kpiValue}>{tracking.truckSpeed || 62} km/h</Text>
-                        <Text style={styles.kpiSub}>Today</Text>
-                      </View>
-                    </View>
-                    <View style={styles.kpiCard}>
-                      <View style={styles.kpiIconWrap}>
-                        <Clock size={18} color="#FF9800" />
-                      </View>
-                      <View>
-                        <Text style={styles.kpiLabel}>Stop Timer</Text>
-                        <Text style={styles.kpiValue}>{formatTimer(stoppedSeconds)}</Text>
-                        <Text style={styles.kpiSub}>Current Trip</Text>
-                      </View>
-                    </View>
-                    <View style={styles.kpiCard}>
-                      <View style={styles.kpiIconWrap}>
-                        <Fuel size={18} color="#E53935" />
-                      </View>
-                      <View>
-                        <Text style={styles.kpiLabel}>Fuel Used</Text>
-                        <Text style={styles.kpiValue}>78 L</Text>
-                        <Text style={styles.kpiSub}>Today</Text>
-                      </View>
-                    </View>
-                    <View style={styles.kpiCard}>
-                      <View style={styles.kpiIconWrap}>
-                        <MapPinned size={18} color="#1E88E5" />
-                      </View>
-                      <View>
-                        <Text style={styles.kpiLabel}>Next Destination</Text>
-                        <Text style={styles.kpiValue}>Dar es Salaam</Text>
-                        <Text style={styles.kpiSub}>ETA 10:45 AM</Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {renderDriverTripActions()}
-                </ScrollView>
-              )}
-
-              {!expanded && (
-                renderDriverTripActions()
-              )}
+              <View style={styles.simDistanceCol}>
+                <Text style={styles.simDistanceLabel}>Distance</Text>
+                <Text style={styles.simDistanceVal}>3.1 km</Text>
+                <Text style={styles.simDistanceStatus}>Away from vehicle</Text>
+              </View>
             </View>
-          ) : (
-            <View style={styles.activeTripContent}>
-              <View style={styles.tripHeader}>
-                <View>
-                  <Text style={styles.tripStatus}>NEW REQUEST</Text>
-                  <Text style={styles.tripEarnings}>{activeTrip.estimatedEarnings}</Text>
+
+            {/* Information Message card */}
+            <View style={styles.simInfoCard}>
+              <Info size={16} color="#007AFF" style={{ marginRight: 10 }} />
+              <Text style={styles.simInfoText}>
+                Get closer to your vehicle to unlock the <Text style={{ fontWeight: '700' }}>Ready to Start</Text> option.
+              </Text>
+            </View>
+
+            {/* Next Button in Simulation Mode (Assigned State) */}
+            <TouchableOpacity
+              style={[styles.tripActionBtn, styles.tripStartBtn, { marginTop: 12 }]}
+              onPress={() => setSimulationStage('convoy_ready')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.tripStartBtnText}>Next →</Text>
+            </TouchableOpacity>
+          </View>
+        ) : simulationStage === 'convoy_ready' ? (
+          <View style={styles.simSheetContent}>
+            {/* Handle */}
+            <View style={styles.handleContainer}>
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#D2D2D7' }} />
+            </View>
+
+            {/* Ready Banner */}
+            <View style={styles.simReadyBanner}>
+              <View style={styles.simUsersCircle}>
+                <User size={22} color={theme.colors.primary} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.simReadyBannerTitle}>All vehicles are ready!</Text>
+                <Text style={styles.simReadyBannerSubtitle}>
+                  All 4 vehicles in the convoy are ready to begin. Please wait for all drivers to slide and start the trip.
+                </Text>
+              </View>
+            </View>
+
+            {/* Convoy Readiness Title */}
+            <Text style={styles.simConvoyTitle}>Convoy Readiness</Text>
+
+            {/* Convoy Grid (4 cards) */}
+            <View style={styles.simConvoyGrid}>
+              {[
+                { id: '1', plate: 'TZA 123 AB', name: 'Driver A' },
+                { id: '2', plate: 'TZA 456 CD', name: 'Driver B' },
+                { id: '3', plate: 'TZA 789 EF', name: 'Driver C' },
+                { id: '4', plate: 'TZA 321 GH', name: 'Driver D' },
+              ].map((item) => (
+                <View key={item.id} style={styles.simConvoyCardSmall}>
+                  <View style={styles.simCardCheckBadge}>
+                    <CheckCircle size={10} color={theme.colors.white} fill={theme.colors.success} />
+                  </View>
+                  <View style={styles.simCardTruckCircle}>
+                    <Truck size={14} color={theme.colors.primary} />
+                  </View>
+                  <Text style={styles.simCardPlate} numberOfLines={1}>{item.plate}</Text>
+                  <Text style={styles.simCardDriverName} numberOfLines={1}>{item.name}</Text>
+                  <Text style={styles.simCardStatus}>Ready</Text>
                 </View>
-                <View style={styles.timeTag}>
-                  <Text style={styles.timeText}>{activeTrip.time}</Text>
+              ))}
+            </View>
+
+            {/* Slide to Start Slider */}
+            <View style={styles.simSliderContainer}>
+              {/* Background Track with Text */}
+              <View style={styles.simSliderTrack}>
+                <Text style={styles.simSliderText}>SLIDE TO START TRIP</Text>
+              </View>
+              {/* Animated Sliding Handle */}
+              <Animated.View
+                style={[
+                  styles.simSliderHandle,
+                  { transform: [{ translateX: slideX }] }
+                ]}
+                {...sliderPanResponder.panHandlers}
+              >
+                <ArrowRight size={22} color={theme.colors.primary} />
+              </Animated.View>
+            </View>
+
+            {/* Helper Text with lock icon */}
+            <View style={styles.simSliderHelperContainer}>
+              <Lock size={12} color="#6E6E73" style={{ marginRight: 6 }} />
+              <Text style={styles.simSliderHelperText}>
+                Slide to the right to start the trip.
+              </Text>
+            </View>
+          </View>
+        ) : simulationStage === 'trip_active' ? (
+          <View style={styles.simSheetContent}>
+            {/* Handle */}
+            <View style={styles.handleContainer}>
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#D2D2D7' }} />
+            </View>
+
+            {/* Convoy Formation Section */}
+            <Text style={styles.simConvoyTitle}>Convoy Formation</Text>
+            <View style={styles.simFormationRow}>
+              {/* Lead Vehicle */}
+              <View style={styles.simFormationColumn}>
+                <Text style={styles.simFormationLabel}>Lead Vehicle</Text>
+                <View style={styles.simFormationItem}>
+                  <View style={styles.simFormationIconContainer}>
+                    <Truck size={16} color={theme.colors.primary} />
+                  </View>
+                  <Text style={styles.simFormationPlate}>TZA 123 AB</Text>
+                  <Text style={styles.simFormationDriver}>Driver A</Text>
                 </View>
               </View>
 
-              {expanded && (
-                <View style={styles.routeContainer}>
-                  <View style={styles.routePoint}>
-                    <View style={[styles.pointDot, { backgroundColor: theme.colors.primary }]} />
-                    <Text style={styles.routeText} numberOfLines={1}>{activeTrip.pickup}</Text>
+              {/* Connector */}
+              <View style={styles.simFormationConnector}>
+                <Text style={styles.simFormationDistance}>300m</Text>
+                <View style={styles.simDashedLine} />
+              </View>
+
+              {/* My Vehicle */}
+              <View style={styles.simFormationColumn}>
+                <Text style={[styles.simFormationLabel, { color: theme.colors.primary }]}>My Vehicle</Text>
+                <View style={[styles.simFormationItem, styles.simFormationItemActive]}>
+                  <View style={styles.simFormationIconContainerActive}>
+                    <Truck size={16} color={theme.colors.primary} />
                   </View>
-                  <View style={styles.routeLine} />
-                  <View style={styles.routePoint}>
-                    <MapPin size={16} color={theme.colors.textSecondary} />
-                    <Text style={styles.routeText} numberOfLines={1}>{activeTrip.dropoff}</Text>
+                  <Text style={styles.simFormationPlate}>TZA 456 CD</Text>
+                  <Text style={[styles.simFormationDriver, { color: theme.colors.primary, fontWeight: '700' }]}>You</Text>
+                </View>
+              </View>
+
+              {/* Connector */}
+              <View style={styles.simFormationConnector}>
+                <Text style={styles.simFormationDistance}>450m</Text>
+                <View style={styles.simDashedLine} />
+              </View>
+
+              {/* Vehicle C */}
+              <View style={styles.simFormationColumn}>
+                <Text style={styles.simFormationLabel}>Vehicle C</Text>
+                <View style={styles.simFormationItem}>
+                  <View style={styles.simFormationIconContainer}>
+                    <Truck size={16} color={theme.colors.primary} />
+                  </View>
+                  <Text style={styles.simFormationPlate}>TZA 789 EF</Text>
+                  <Text style={styles.simFormationDriver}>Driver C</Text>
+                </View>
+              </View>
+
+              {/* Connector */}
+              <View style={styles.simFormationConnector}>
+                <Text style={styles.simFormationDistance}>290m</Text>
+                <View style={styles.simDashedLine} />
+              </View>
+
+              {/* Tail Vehicle */}
+              <View style={styles.simFormationColumn}>
+                <Text style={styles.simFormationLabel}>Tail Vehicle</Text>
+                <View style={styles.simFormationItem}>
+                  <View style={styles.simFormationIconContainer}>
+                    <Truck size={16} color={theme.colors.primary} />
+                  </View>
+                  <Text style={styles.simFormationPlate}>TZA 321 GH</Text>
+                  <Text style={styles.simFormationDriver}>Driver D</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Convoy Health Section */}
+            <Text style={styles.simConvoyTitle}>Convoy Health</Text>
+            <View style={styles.simHealthCard}>
+              <View style={styles.simHealthGrid}>
+                {/* Vehicles Online */}
+                <View style={styles.simHealthItem}>
+                  <View style={styles.simHealthIconWrap}>
+                    <Wifi size={16} color={theme.colors.primary} />
+                  </View>
+                  <View style={{ marginLeft: 8 }}>
+                    <Text style={styles.simHealthLabel}>Vehicles Online</Text>
+                    <Text style={styles.simHealthValue}>4/4</Text>
                   </View>
                 </View>
-              )}
 
-              <Button
-                title={t('view_trip')}
-                onPress={handleTripAction}
-                style={styles.actionBtn}
-              />
+                {/* Average Speed */}
+                <View style={styles.simHealthItem}>
+                  <View style={styles.simHealthIconWrap}>
+                    <Gauge size={16} color={theme.colors.primary} />
+                  </View>
+                  <View style={{ marginLeft: 8 }}>
+                    <Text style={styles.simHealthLabel}>Average Speed</Text>
+                    <Text style={styles.simHealthValue}>58 km/h</Text>
+                  </View>
+                </View>
+
+                {/* Distance Travelled */}
+                <View style={styles.simHealthItem}>
+                  <View style={styles.simHealthIconWrap}>
+                    <Route size={16} color={theme.colors.primary} />
+                  </View>
+                  <View style={{ marginLeft: 8 }}>
+                    <Text style={styles.simHealthLabel}>Distance Travelled</Text>
+                    <Text style={styles.simHealthValue}>312 km</Text>
+                  </View>
+                </View>
+
+                {/* Est. Time to Destination */}
+                <View style={styles.simHealthItem}>
+                  <View style={styles.simHealthIconWrap}>
+                    <Clock size={16} color={theme.colors.primary} />
+                  </View>
+                  <View style={{ marginLeft: 8 }}>
+                    <Text style={styles.simHealthLabel}>Est. Time to Dest.</Text>
+                    <Text style={styles.simHealthValue}>6h 45m</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Convoy Health Footer */}
+              <View style={styles.simHealthFooter}>
+                <CheckCircle size={14} color="#E53935" fill="#FFEEEF" />
+                <Text style={styles.simHealthFooterText}>
+                  Convoy is operating within safe distance.
+                </Text>
+              </View>
             </View>
-          )}
-        </View>
+
+            {/* Bottom Actions Row */}
+            <View style={styles.simActiveActionsRow}>
+              {/* Request Stop */}
+              <TouchableOpacity 
+                style={styles.simRequestStopBtn}
+                onPress={() => console.log("Stop Requested")}
+                activeOpacity={0.8}
+              >
+                <View style={styles.simPauseCircle}>
+                  <Pause size={16} color={theme.colors.primary} />
+                </View>
+                <View style={{ marginLeft: 8, flex: 1 }}>
+                  <Text style={styles.simActionBtnTitle}>Request a Stop</Text>
+                  <Text style={styles.simActionBtnSub}>Notify convoy to pause</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* End Trip (Disabled) */}
+              <View style={styles.simEndTripBtnDisabled}>
+                <View style={styles.simStopCircleDisabled}>
+                  <Square size={14} color="#AEAEB2" fill="#AEAEB2" />
+                </View>
+                <View style={{ marginLeft: 8, flex: 1 }}>
+                  <Text style={styles.simActionBtnTitleDisabled}>End Trip</Text>
+                  <Text style={styles.simActionBtnSubDisabled}>Not available yet</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <>
+            {/* Handle — tap to toggle */}
+            <TouchableOpacity style={styles.handleContainer} onPress={handleTap} activeOpacity={0.9}>
+              <Animated.View style={{ transform: [{ rotate: arrowRotateInterpolation }] }}>
+                <ChevronUp size={24} color={theme.colors.textSecondary} />
+              </Animated.View>
+            </TouchableOpacity>
+
+            <View style={styles.cardContent}>
+              {!activeTrip ? (
+                <View style={styles.noTripContent}>
+                  {/* Status Header */}
+                  <View style={styles.statusHeader}>
+                    <View style={styles.statusIconWrap}>
+                      <Activity size={20} color={theme.colors.primary} />
+                    </View>
+                    <View style={styles.statusTextWrap}>
+                      <Text style={styles.sheetTitle}>{driverTripTitle}</Text>
+                      <Text style={styles.sheetSubtitle}>{driverTripSubtitle}</Text>
+                    </View>
+                  </View>
+
+                  {(driverTripSession?.status === 'active' || driverTripSession?.status === 'stopped' || driverTripSession?.status === 'delivered_pending_approval') && (
+                    <View style={styles.timerStrip}>
+                      <View style={styles.timerItem}>
+                        <Text style={styles.timerLabel}>Drive Timer</Text>
+                        <Text style={styles.timerValue}>{formatTimer(activeSeconds)}</Text>
+                      </View>
+                      <View style={styles.timerDivider} />
+                      <View style={styles.timerItem}>
+                        <Text style={styles.timerLabel}>Stop Timer</Text>
+                        <Text style={[styles.timerValue, driverTripSession?.status === 'stopped' && stoppedSeconds >= ENGINE_IDLE_WARNING_SECONDS && styles.timerWarning]}>
+                          {formatTimer(stoppedSeconds)}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {driverTripSession?.status === 'stopped' && (
+                    <View style={styles.engineDisclaimer}>
+                      <AlertTriangle size={16} color="#B45309" />
+                      <Text style={styles.engineDisclaimerText}>
+                        If stopping for more than 2 minutes, please shut off the engine.
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {expanded && (
+                    <ScrollView 
+                      showsVerticalScrollIndicator={false}
+                      style={styles.expandedScroll}
+                      contentContainerStyle={styles.expandedScrollContent}
+                      nestedScrollEnabled={true}
+                    >
+                      {/* Telemetry Row — 3 metrics */}
+                      <View style={styles.telemetryRow}>
+                        <View style={styles.telemetryItem}>
+                          <Clock size={16} color={theme.colors.primary} />
+                          <Text style={styles.telemetryLabel}>Drive Timer</Text>
+                          <Text style={styles.telemetryValue}>{formatTimer(activeSeconds)}</Text>
+                          <Text style={styles.telemetrySub}>This Shift</Text>
+                        </View>
+                        <View style={styles.telemetryItem}>
+                          <Navigation size={16} color={theme.colors.primary} />
+                          <Text style={styles.telemetryLabel}>Trips Completed</Text>
+                          <Text style={styles.telemetryValue}>{tripStats.loading ? '...' : tripStats.completedCount}</Text>
+                          <Text style={styles.telemetrySub}>Today</Text>
+                        </View>
+                        <View style={styles.telemetryItem}>
+                          <Route size={16} color={theme.colors.primary} />
+                          <Text style={styles.telemetryLabel}>Distance Today</Text>
+                          <Text style={styles.telemetryValue}>{tripStats.loading ? '...' : `${tripStats.totalDistance} km`}</Text>
+                          <Text style={styles.telemetrySub}>Driven</Text>
+                        </View>
+                      </View>
+
+                      {/* Proximity Section */}
+                      <View style={styles.proximityRow}>
+                        <View style={styles.proximityCard}>
+                          <View style={styles.proximityIconWrap}>
+                            <Truck size={16} color={theme.colors.primary} />
+                          </View>
+                          <View>
+                            <Text style={styles.proximityLabel}>Distance to Vehicle</Text>
+                            <Text style={styles.proximityValue}>
+                              {distanceKm !== null ? formatDistance(distanceKm) : '—'}
+                            </Text>
+                            <Text style={styles.proximitySub}>
+                              {distanceKm !== null ? (distanceKm < 0.5 ? 'Very Close' : distanceKm < 5 ? 'Nearby' : 'En Route') : '—'}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.proximityCard}>
+                          <View style={[styles.proximityIconWrap, { backgroundColor: '#E8F5E9' }]}>
+                            <Radar size={16} color="#4CAF50" />
+                          </View>
+                          <View>
+                            <Text style={styles.proximityLabel}>Proximity Alert</Text>
+                            <Text style={[styles.proximityValue, { color: isWithinStartRange ? '#4CAF50' : '#FF9800' }]}>
+                              {isWithinStartRange ? 'Ready' : 'Not Ready'}
+                            </Text>
+                            <Text style={styles.proximitySub}>
+                              {isWithinStartRange ? 'Start enabled' : `Within ${Math.round(PROXIMITY_START_KM * 1000)} m required`}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Fleet KPI Grid — 2×2 */}
+                      <View style={styles.kpiGrid}>
+                        <View style={styles.kpiCard}>
+                          <View style={styles.kpiIconWrap}>
+                            <Gauge size={18} color={theme.colors.primary} />
+                          </View>
+                          <View>
+                            <Text style={styles.kpiLabel}>Average Speed</Text>
+                            <Text style={styles.kpiValue}>{tracking.truckSpeed || 62} km/h</Text>
+                            <Text style={styles.kpiSub}>Today</Text>
+                          </View>
+                        </View>
+                        <View style={styles.kpiCard}>
+                          <View style={styles.kpiIconWrap}>
+                            <Clock size={18} color="#FF9800" />
+                          </View>
+                          <View>
+                            <Text style={styles.kpiLabel}>Stop Timer</Text>
+                            <Text style={styles.kpiValue}>{formatTimer(stoppedSeconds)}</Text>
+                            <Text style={styles.kpiSub}>Current Trip</Text>
+                          </View>
+                        </View>
+                        <View style={styles.kpiCard}>
+                          <View style={styles.kpiIconWrap}>
+                            <Fuel size={18} color="#E53935" />
+                          </View>
+                          <View>
+                            <Text style={styles.kpiLabel}>Fuel Used</Text>
+                            <Text style={styles.kpiValue}>78 L</Text>
+                            <Text style={styles.kpiSub}>Today</Text>
+                          </View>
+                        </View>
+                        <View style={styles.kpiCard}>
+                          <View style={styles.kpiIconWrap}>
+                            <MapPinned size={18} color="#1E88E5" />
+                          </View>
+                          <View>
+                            <Text style={styles.kpiLabel}>Next Destination</Text>
+                            <Text style={styles.kpiValue}>Dar es Salaam</Text>
+                            <Text style={styles.kpiSub}>ETA 10:45 AM</Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      {renderDriverTripActions()}
+                    </ScrollView>
+                  )}
+
+                  {!expanded && (
+                    renderDriverTripActions()
+                  )}
+                </View>
+              ) : (
+                <View style={styles.activeTripContent}>
+                  <View style={styles.tripHeader}>
+                    <View>
+                      <Text style={styles.tripStatus}>NEW REQUEST</Text>
+                      <Text style={styles.tripEarnings}>{activeTrip.estimatedEarnings}</Text>
+                    </View>
+                    <View style={styles.timeTag}>
+                      <Text style={styles.timeText}>{activeTrip.time}</Text>
+                    </View>
+                  </View>
+
+                  {expanded && (
+                    <View style={styles.routeContainer}>
+                      <View style={styles.routePoint}>
+                        <View style={[styles.pointDot, { backgroundColor: theme.colors.primary }]} />
+                        <Text style={styles.routeText} numberOfLines={1}>{activeTrip.pickup}</Text>
+                      </View>
+                      <View style={styles.routeLine} />
+                      <View style={styles.routePoint}>
+                        <MapPin size={16} color={theme.colors.textSecondary} />
+                        <Text style={styles.routeText} numberOfLines={1}>{activeTrip.dropoff}</Text>
+                      </View>
+                    </View>
+                  )}
+
+                  <Button
+                    title={t('view_trip')}
+                    onPress={handleTripAction}
+                    style={styles.actionBtn}
+                  />
+                </View>
+              )}
+            </View>
+          </>
+        )}
       </Animated.View>
+
+
 
       {/* SOS Screen Modal */}
       <Modal
@@ -1602,5 +2135,588 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: theme.colors.text,
     fontWeight: '600',
+  },
+  simConsignmentCard: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 70 : 60,
+    left: '4%',
+    right: '4%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+    zIndex: 20,
+  },
+  simCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  simCardTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#1D1D1F',
+    letterSpacing: -0.3,
+  },
+  simCardRoute: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6E6E73',
+    marginTop: 2,
+  },
+  simStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFEEEF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 99,
+  },
+  simStatusText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#E53935',
+    letterSpacing: 0.2,
+  },
+  simDivider: {
+    height: 1,
+    backgroundColor: '#F2F2F7',
+    marginVertical: 10,
+  },
+  simStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  simStatCol: {
+    flex: 1,
+  },
+  simStatLabel: {
+    fontSize: 11,
+    color: '#6E6E73',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  simStatValRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  simStatValue: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#E53935',
+  },
+  simStatsDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#F2F2F7',
+    marginHorizontal: 16,
+  },
+  simMarkerWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  simMarkerBubble: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginLeft: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  simMarkerBubbleText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1D1D1F',
+  },
+  simDriverMarkerCircleOuter: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 122, 255, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 122, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  simDriverMarkerCircleInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#007AFF',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  simSheetContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+  },
+  simProximityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  simPinCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFEEEF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  simProximityTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1D1D1F',
+    lineHeight: 22,
+  },
+  simProximitySubtitle: {
+    fontSize: 12,
+    color: '#6E6E73',
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  simTruckDistanceCard: {
+    flexDirection: 'row',
+    backgroundColor: '#F5F5F7',
+    borderRadius: 16,
+    padding: 16,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  simTruckCol: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  simTruckCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFEEEF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  simTruckLabel: {
+    fontSize: 11,
+    color: '#6E6E73',
+    fontWeight: '500',
+  },
+  simTruckName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1D1D1F',
+    marginTop: 1,
+  },
+  simTrackerName: {
+    fontSize: 11,
+    color: '#6E6E73',
+    marginTop: 1,
+  },
+  simDistanceCol: {
+    alignItems: 'flex-end',
+    paddingLeft: 12,
+  },
+  simDistanceLabel: {
+    fontSize: 11,
+    color: '#6E6E73',
+    fontWeight: '500',
+  },
+  simDistanceVal: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#E53935',
+    marginTop: 1,
+  },
+  simDistanceStatus: {
+    fontSize: 11,
+    color: '#E53935',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  simInfoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F4F7FF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#D2E3FF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  simInfoText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#3A3A3C',
+    lineHeight: 16,
+  },
+  zoomButton: {
+    position: 'absolute',
+    top: 180,
+    right: 20,
+    backgroundColor: theme.colors.white,
+    width: 36,
+    height: 36,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#D2D2D7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 15,
+  },
+  zoomButtonText: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#000000',
+    marginTop: -2,
+  },
+  simReadyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  simUsersCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFEEEF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  simReadyBannerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#E53935',
+    lineHeight: 22,
+  },
+  simReadyBannerSubtitle: {
+    fontSize: 12,
+    color: '#6E6E73',
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  simConvoyTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6E6E73',
+    marginBottom: 8,
+    marginTop: 10,
+    paddingHorizontal: 4,
+  },
+  simConvoyGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 18,
+  },
+  simConvoyCardSmall: {
+    width: '23%',
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  simCardCheckBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+  },
+  simCardTruckCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFEEEF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  simCardPlate: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#1D1D1F',
+  },
+  simCardDriverName: {
+    fontSize: 8,
+    color: '#6E6E73',
+    marginTop: 1,
+  },
+  simCardStatus: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#E53935',
+    marginTop: 2,
+  },
+  simSliderContainer: {
+    width: '100%',
+    height: 60,
+    backgroundColor: '#E53935',
+    borderRadius: 30,
+    position: 'relative',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  simSliderTrack: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  simSliderText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  simSliderHandle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  simSliderHelperContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  simSliderHelperText: {
+    fontSize: 11,
+    color: '#6E6E73',
+    fontWeight: '500',
+  },
+  simFormationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 14,
+    paddingHorizontal: 4,
+  },
+  simFormationColumn: {
+    alignItems: 'center',
+  },
+  simFormationLabel: {
+    fontSize: 9,
+    color: '#8E8E93',
+    marginBottom: 4,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  simFormationItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 2,
+  },
+  simFormationItemActive: {
+    borderWidth: 1,
+    borderColor: '#E53935',
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 5,
+    paddingHorizontal: 7,
+    marginTop: -3,
+    shadowColor: '#E53935',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  simFormationIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F2F2F7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  simFormationIconContainerActive: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFEEEF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  simFormationPlate: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    color: '#1D1D1F',
+  },
+  simFormationDriver: {
+    fontSize: 8,
+    color: '#8E8E93',
+    marginTop: 1,
+  },
+  simFormationConnector: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: -2,
+    minWidth: 28,
+  },
+  simFormationDistance: {
+    fontSize: 8,
+    color: '#1D1D1F',
+    fontWeight: '700',
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  simDashedLine: {
+    width: '100%',
+    height: 1,
+    borderWidth: 0.5,
+    borderColor: '#D2D2D7',
+    borderStyle: 'dashed',
+  },
+  simHealthCard: {
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    padding: 10,
+    marginBottom: 14,
+    width: '100%',
+  },
+  simHealthGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  simHealthItem: {
+    width: '48%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  simHealthIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFEEEF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  simHealthLabel: {
+    fontSize: 8,
+    color: '#8E8E93',
+    fontWeight: '600',
+  },
+  simHealthValue: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#E53935',
+  },
+  simHealthFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#F2F2F7',
+    paddingTop: 8,
+    marginTop: 2,
+  },
+  simHealthFooterText: {
+    fontSize: 9.5,
+    color: '#6E6E73',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  simActiveActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 4,
+  },
+  simRequestStopBtn: {
+    width: '48%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E53935',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: '#FFFFFF',
+  },
+  simPauseCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E53935',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  simActionBtnTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#1D1D1F',
+  },
+  simActionBtnSub: {
+    fontSize: 8,
+    color: '#8E8E93',
+  },
+  simEndTripBtnDisabled: {
+    width: '48%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    opacity: 0.8,
+  },
+  simStopCircleDisabled: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E5E5EA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  simActionBtnTitleDisabled: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#8E8E93',
+  },
+  simActionBtnSubDisabled: {
+    fontSize: 8,
+    color: '#AEAEB2',
   },
 });

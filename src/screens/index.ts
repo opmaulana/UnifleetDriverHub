@@ -4,7 +4,7 @@ export * from './OTPScreen';
 export * from './BackgroundCheckScreen';
 export * from './ProfileSetupScreen';
 export * from './HomeDashboard';
-export * from './EarningsScreen';
+export * from './IncentivesScreen';
 export * from './ProfileScreen';
 export * from './TripDetailsScreen';
 export * from './ProofOfDeliveryScreen';

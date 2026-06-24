@@ -15,7 +15,7 @@ import {
   Keyboard
 } from 'react-native';
 import { theme } from '../theme/theme';
-import { X } from 'lucide-react-native';
+import { X, Cpu } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 
@@ -34,6 +34,18 @@ export const DriverSignInScreen = ({ navigation }: any) => {
   const step2Opacity = useRef(new Animated.Value(0)).current;
   const step2Height = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
+
+  const handleDevBypass = () => {
+    login({
+      id: 'dev-bypass-driver',
+      full_name: 'Dev Bypass Driver',
+      phone_number: '+255111111111',
+      tracker_name: 'CAG 1653 ZM FOTON',
+      role: 'DRIVER',
+      approval_status: 'APPROVED',
+    });
+    navigation.replace('Main');
+  };
 
   const handleBackPress = () => {
     if (step === 2) {
@@ -129,13 +141,22 @@ export const DriverSignInScreen = ({ navigation }: any) => {
       <View style={styles.content}>
         <View style={styles.headerRow}>
           <Text style={styles.topBrand}>ASAS Mobile</Text>
-          <TouchableOpacity 
-            onPress={handleBackPress}
-            activeOpacity={0.7}
-            style={styles.closeButton}
-          >
-            <X color="#000000" size={28} strokeWidth={2} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <TouchableOpacity
+              onPress={handleDevBypass}
+              style={styles.devBypassButton}
+              activeOpacity={0.8}
+            >
+              <Cpu size={18} color={theme.colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={handleBackPress}
+              activeOpacity={0.7}
+              style={styles.closeButton}
+            >
+              <X color="#000000" size={28} strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <KeyboardAvoidingView
@@ -276,6 +297,16 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: 4,
+  },
+  devBypassButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFF0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
   },
   scrollContainer: {
     flexGrow: 1,

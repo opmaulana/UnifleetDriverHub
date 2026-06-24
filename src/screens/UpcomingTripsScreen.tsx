@@ -11,7 +11,7 @@ const UPCOMING_DATA = [
     date: 'Today, 2:00 PM',
     pickup: 'Westlands, Nairobi',
     dropoff: 'Kilimani, Nairobi',
-    earnings: 'KSh 450',
+    compliance: '100% Target',
     type: 'Scheduled',
   },
   {
@@ -19,7 +19,7 @@ const UPCOMING_DATA = [
     date: 'Tomorrow, 9:00 AM',
     pickup: 'JKIA Airport',
     dropoff: 'CBD, City Center',
-    earnings: 'KSh 1,200',
+    compliance: '100% Target',
     type: 'Express',
   },
 ];
@@ -52,8 +52,8 @@ export const UpcomingTripsScreen = () => {
 
         <View style={styles.cardFooter}>
           <View>
-            <Text style={styles.earningsLabel}>Est. Earnings</Text>
-            <Text style={styles.earningsValue}>{item.earnings}</Text>
+            <Text style={styles.earningsLabel}>Compliance Target</Text>
+            <Text style={styles.earningsValue}>{item.compliance}</Text>
           </View>
           <TouchableOpacity style={styles.detailsBtn}>
             <Text style={styles.detailsBtnText}>Details</Text>

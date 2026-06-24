@@ -36,7 +36,7 @@ export const TripDetailsScreen = ({ navigation }: any) => {
           </View>
 
           <Text style={styles.earnings}>{activeTrip.estimatedEarnings}</Text>
-          <Text style={styles.earningsLabel}>Estimated Earnings</Text>
+          <Text style={styles.earningsLabel}>Compliance Target</Text>
 
           <View style={styles.divider} />
 

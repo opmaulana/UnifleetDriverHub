@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { theme } from '../theme/theme';
 import { Home, CheckCircle, Wallet, User } from 'lucide-react-native';
+import { useStore } from '../store/useStore';
 
 // Import Screens
 import { SplashScreen } from '../screens/SplashScreen';
@@ -19,7 +20,7 @@ import { ApprovalPendingScreen } from '../screens/ApprovalPendingScreen';
 import { HomeDashboard } from '../screens/HomeDashboard';
 
 import { CompletedTripsScreen } from '../screens/CompletedTripsScreen';
-import { EarningsScreen } from '../screens/EarningsScreen';
+import { IncentivesScreen } from '../screens/IncentivesScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { TripDetailsScreen } from '../screens/TripDetailsScreen';
 import { ProofOfDeliveryScreen } from '../screens/ProofOfDeliveryScreen';
@@ -57,6 +58,9 @@ const fadeTransition = {
 };
 
 const TabNavigator = () => {
+  const { user } = useStore();
+  const isDevBypass = user?.driver_id === 'dev-bypass-driver';
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -85,15 +89,15 @@ const TabNavigator = () => {
       />
 
       <Tab.Screen 
-        name="Completed" 
+        name="Trips" 
         component={CompletedTripsScreen} 
         options={{
           tabBarIcon: ({ color, size }) => <CheckCircle color={color} size={size} />,
         }}
       />
       <Tab.Screen 
-        name="Earnings" 
-        component={EarningsScreen} 
+        name="Incentives" 
+        component={IncentivesScreen} 
         options={{
           tabBarIcon: ({ color, size }) => <Wallet color={color} size={size} />,
         }}

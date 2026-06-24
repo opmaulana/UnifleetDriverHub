@@ -367,6 +367,18 @@ export const OnboardingIntroScreen = ({ navigation }: any) => {
             <View style={[styles.dot, step === 1 ? styles.dotActive : styles.dotInactive]} />
             <View style={[styles.dot, step === 2 ? styles.dotActive : styles.dotInactive]} />
           </View>
+
+          {step === 0 && (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('IntentSelection', { visitorName: 'Abhiroop' })}
+              activeOpacity={0.7}
+              style={styles.signInContainer}
+            >
+              <Text style={styles.signInText}>
+                Already have an account? <Text style={styles.signInLink}>Sign in</Text>
+              </Text>
+            </TouchableOpacity>
+          )}
         </Animated.View>
       </Animated.View>
       </KeyboardAvoidingView>
@@ -388,6 +400,20 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 72,
     paddingBottom: 28,
+  },
+  signInContainer: {
+    marginTop: -8,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  signInText: {
+    fontSize: 16,
+    color: '#6E6E73',
+    fontWeight: '500',
+  },
+  signInLink: {
+    color: '#007AFF',
+    fontWeight: '600',
   },
   topBrand: {
     ...playfairBoldStyle,

@@ -13,7 +13,7 @@ import {
 import { theme } from '../../theme/theme';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
+import { ArrowLeft, Eye, EyeOff, Cpu } from 'lucide-react-native';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export const OperationsLogin = ({ navigation }: any) => {
@@ -57,6 +57,13 @@ export const OperationsLogin = ({ navigation }: any) => {
                 activeOpacity={0.8}
               >
                 <ArrowLeft size={20} color={theme.colors.text} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.devBypassButton}
+                onPress={() => navigation.replace('OperationsMain')}
+                activeOpacity={0.8}
+              >
+                <Cpu size={20} color={theme.colors.primary} />
               </TouchableOpacity>
               <Text style={styles.title}>{t('operator_auth')}</Text>
               <Text style={styles.subtitle}>
@@ -165,6 +172,25 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
+  },
+  devBypassButton: {
+    position: 'absolute',
+    top: -8,
+    right: 0,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#FFF0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
   },
   flex: {
     flex: 1,

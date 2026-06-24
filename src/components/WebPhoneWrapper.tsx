@@ -170,6 +170,8 @@ export const WebPhoneWrapper: React.FC<WebPhoneWrapperProps> = ({ children }) =>
               </TouchableOpacity>
             </View>
 
+
+
             {/* Connectivity Box */}
             <View style={styles.qrCard}>
               <Text style={styles.qrTitle}>📲 Run on Your Phone</Text>
